@@ -15,7 +15,7 @@ print "Reading year %s json file to database" % year
 json_data = open("/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json")
 csv_file = open("data_ASPB.csv","wb")
 csv_writer = csv.writer(csv_file,delimiter=';')
-csv_writer.writerow(['version_UUID','creation_date','lon', 'lat','ref_sys','type','site_response_1','site_response_2','site_response_1_new','site_response_2_new','site_response_3_new', 'tiger_response_1','tiger_response_2','tiger_response_3','validated','expert_validation_result'])
+csv_writer.writerow(['version_UUID','creation_date','lon', 'lat','ref_sys','type','site_response_1','site_response_2','site_response_1_new','site_response_2_new','site_response_3_new', 'tiger_response_1','tiger_response_2','tiger_response_3','validated','expert_validation_result','map_url'])
 data = json.load(json_data)
 for bit in data:
     creation_date_str = bit['creation_time']
@@ -33,6 +33,7 @@ for bit in data:
     site_response_3_new = ''
     site_response_1 = ''
     site_response_2 = ''
+    map_url = ''
     validated = False
     if bit['movelab_annotation'] != None and bit['movelab_annotation'] and bit['movelab_annotation'] != 'None' and bit['movelab_annotation'] != '':
         validated = True
@@ -90,4 +91,5 @@ for bit in data:
         tiger_response_1 = 'ns' if bit['tiger_responses']['q1_response'] == 0 else ('si' if bit['tiger_responses']['q1_response'] == 1 else 'no')
         tiger_response_2 = 'ns' if bit['tiger_responses']['q2_response'] == 0 else ('si' if bit['tiger_responses']['q2_response'] == 1 else 'no')
         tiger_response_3 = 'ns' if bit['tiger_responses']['q3_response'] == 0 else ('si' if bit['tiger_responses']['q3_response'] == 1 else 'no')
-    csv_writer.writerow([bit['version_UUID'],creation_date,bit['lon'], bit['lat'],'WGS84',bit['type'],site_response_1,site_response_2,site_response_1_new,site_response_2_new,site_response_3_new,tiger_response_1,tiger_response_2,tiger_response_3,validated,expert_validation_result])
+    map_url = "http://" + config.params['server_url'] + "/single_report_map/" + bit['version_UUID']
+    csv_writer.writerow([bit['version_UUID'],creation_date,bit['lon'], bit['lat'],'WGS84',bit['type'],site_response_1,site_response_2,site_response_1_new,site_response_2_new,site_response_3_new,tiger_response_1,tiger_response_2,tiger_response_3,validated,expert_validation_result,map_url])
