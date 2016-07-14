@@ -1,4 +1,8 @@
 params = dict(
-  server_url = "someurl",
-  auth_token = "sometoken"
+  server_url = "127.0.0.1:8000",
+  auth_token = "some_token",
+  db_host = "localhost",
+  db_name = "some_database",
+  db_user = "some_user",
+  db_password = "some_password",
 )
