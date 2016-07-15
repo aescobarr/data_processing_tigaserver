@@ -7,6 +7,17 @@ import config
 import psycopg2
 from django.utils.dateparse import parse_datetime
 
+def clean_photo_str(photo_str):
+    if photo_str == '' or photo_str == 'None' or photo_str == None:
+        return ''
+    splitted_str = photo_str.split(' ')
+    if len(splitted_str) > 0:
+        str_href = splitted_str[1]
+        str_href_nocomma = str_href.replace('"','')
+        str_clean = str_href_nocomma.replace('href=','')
+        return str_clean
+    return ''
+
 this_year = datetime.now().year
 
 headers = {'Authorization': config.params['auth_token']}
@@ -68,7 +79,7 @@ else:
 #                         expert_validation_result = 'none#none'
 
 #                     if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation']['photo_html'] and bit['movelab_annotation']['photo_html'] != 'None' and bit['movelab_annotation']['photo_html'] != '':
-#                         photo_html_str = bit['movelab_annotation']['photo_html']
+#                         photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
 #                 else:                    
 #                     if bit['movelab_annotation']['classification'] and bit['movelab_annotation']['classification'] != 'None' and bit['movelab_annotation']['classification'] != '':
 #                         if bit['movelab_annotation']['classification'] == 'albopictus':
@@ -79,14 +90,14 @@ else:
 #                             expert_validation_result = bit['movelab_annotation']['classification'] + '#' + str(bit['movelab_annotation']['score'])                    
 #                     try:
 #                         if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation']['photo_html'] and bit['movelab_annotation']['photo_html'] != 'None' and bit['movelab_annotation']['photo_html'] != '':
-#                             photo_html_str = bit['movelab_annotation']['photo_html']                    
+#                             photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
 #                     except KeyError:
 #                         pass            
 #             elif bit['type'] == 'site':
 #                 expert_validation_result = 'site#' + str(bit['movelab_annotation']['site_certainty_category'])
 #                 try:
 #                     if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation']['photo_html'] and bit['movelab_annotation']['photo_html'] != 'None' and bit['movelab_annotation']['photo_html'] != '':
-#                         photo_html_str = bit['movelab_annotation']['photo_html']
+#                         photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
 #                 except KeyError:
 #                     pass
 #             else:
