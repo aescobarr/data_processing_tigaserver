@@ -130,7 +130,7 @@ conn.commit()
 for file in filenames:
     print "Writing file %s  to database" % file
     json_data = open(file)
-    data = json.load(json_data)    
+    data = json.load(json_data)
     for bit in data:        
         creation_date_str = bit['creation_time']
         creation_date = parse_datetime(creation_date_str)
@@ -263,6 +263,17 @@ for file in filenames:
 print "Updating database"
 #special points -> site#-4 are auto validated
 cursor.execute("""UPDATE map_aux_reports set expert_validation_result = 'site#-4' where version_uuid in (select report_id from tigacrafting_expertreportannotation where site_certainty_notes='auto');""")
+#special classification for 2014 sites
+#2014 auto-validated sites don't have movelab_annotation, therefore they are always labeled as expert_validated = false
+#they have to be manually classified in storm drain (water/dry) and other manually
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and ((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (s_a_1 = 'Sumideros' or s_a_1 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and (s_a_2 = 'Sí' or s_a_2 = 'Yes'))));""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (s_a_1 = 'Sumideros' or s_a_1 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and s_a_2 = 'No'));""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_3 = 'Tipo de lugar de cría' or s_q_3 = 'Type of breeding site') and (s_a_3 = 'Sumideros' or s_a_3 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and (s_a_2 = 'Sí' or s_a_2 = 'Yes')));""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_3 = 'Tipo de lugar de cría' or s_q_3 = 'Type of breeding site') and (s_a_3 = 'Sumideros' or s_a_3 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and s_a_2 = 'No'));""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (s_q_3 = 'Selecciona lloc de cria' and s_a_3 = 'Embornals' and s_q_1 = 'Conté aigua estancada?' and s_a_1 = 'Sí');""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (s_q_3 = 'Selecciona lloc de cria' and s_a_3 = 'Embornals' and s_q_1 = 'Conté aigua estancada?' and s_a_1 = 'No');""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='breeding_site_other' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat <> 0 and expert_validated = FALSE;""")
+#end of special classification for 2014 sites
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='mosquito_tiger_confirmed' where type='adult' and expert_validated=True and expert_validation_result='albopictus#2' and n_photos > 0 and final_expert_status=1;""")
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='mosquito_tiger_probable' where type='adult' and expert_validated=True and expert_validation_result='albopictus#1' and n_photos > 0 and final_expert_status=1;""")
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='yellow_fever_confirmed' where type='adult' and expert_validated=True and expert_validation_result='aegypti#2' and n_photos > 0 and final_expert_status=1;""")
