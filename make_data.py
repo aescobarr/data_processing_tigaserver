@@ -1,3 +1,4 @@
+# coding=utf-8
 #!/usr/bin/env python
 import requests
 from requests.auth import HTTPBasicAuth
@@ -8,7 +9,7 @@ import psycopg2
 from django.utils.dateparse import parse_datetime
 
 def add_photo_to_unfiltered_sites(cursor):
-    cursor.execute("""SELECT m.version_uuid,p.photo FROM map_aux_reports m,tigaserver_app_photo p WHERE p.report_id = m.version_uuid and private_webmap_layer='breeding_site_not_yet_filtered' and n_photos > 0 and photo_url='' and p.hide=false;""")
+    cursor.execute("""SELECT m.version_uuid,p.photo FROM map_aux_reports m,tigaserver_app_photo p WHERE p.report_id = m.version_uuid and ( private_webmap_layer='breeding_site_not_yet_filtered' or private_webmap_layer='storm_drain_water' or private_webmap_layer='storm_drain_dry' or private_webmap_layer='breeding_site_other') and n_photos > 0 and photo_url='' and p.hide=false;""")
     result = cursor.fetchall()
     last_uuid = '-1'
     for row in result:
@@ -64,12 +65,16 @@ filenames = []
 # #####################################################################################################
 # This block should only be uncommented running the script locally and with pregenerated map data files
 # #####################################################################################################
-# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2014.json")
-# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2015.json")
-# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2016.json")
-# filenames.append("/tmp/hidden_reports2014.json")
-# filenames.append("/tmp/hidden_reports2015.json")
-# filenames.append("/tmp/hidden_reports2016.json")
+'''
+filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2014.json")
+filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2015.json")
+filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2016.json")
+filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2017.json")
+filenames.append("/tmp/hidden_reports2014.json")
+filenames.append("/tmp/hidden_reports2015.json")
+filenames.append("/tmp/hidden_reports2016.json")
+filenames.append("/tmp/hidden_reports2017.json")
+'''
 
 for year in range(2014, this_year+1):
     print str(year)
@@ -180,8 +185,11 @@ for file in filenames:
                         validated = False
                         expert_validation_result = 'none#none'
 
-                    if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation']['photo_html'] and bit['movelab_annotation']['photo_html'] != 'None' and bit['movelab_annotation']['photo_html'] != '':
-                        photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
+		    try:
+                        if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation']['photo_html'] and bit['movelab_annotation']['photo_html'] != 'None' and bit['movelab_annotation']['photo_html'] != '':
+                            photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
+                    except KeyError:
+                        pass
                 else:                    
                     if bit['movelab_annotation']['classification'] and bit['movelab_annotation']['classification'] != 'None' and bit['movelab_annotation']['classification'] != '':
                         if bit['movelab_annotation']['classification'] == 'albopictus':
@@ -263,16 +271,6 @@ for file in filenames:
 print "Updating database"
 #special points -> site#-4 are auto validated
 cursor.execute("""UPDATE map_aux_reports set expert_validation_result = 'site#-4' where version_uuid in (select report_id from tigacrafting_expertreportannotation where site_certainty_notes='auto');""")
-#special classification for 2014 sites
-#2014 auto-validated sites don't have movelab_annotation, therefore they are always labeled as expert_validated = false
-#they have to be manually classified in storm drain (water/dry) and other manually
-cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and ((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (s_a_1 = 'Sumideros' or s_a_1 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and (s_a_2 = 'Sí' or s_a_2 = 'Yes'))));""")
-cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (s_a_1 = 'Sumideros' or s_a_1 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and s_a_2 = 'No'));""")
-cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_3 = 'Tipo de lugar de cría' or s_q_3 = 'Type of breeding site') and (s_a_3 = 'Sumideros' or s_a_3 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and (s_a_2 = 'Sí' or s_a_2 = 'Yes')));""")
-cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_3 = 'Tipo de lugar de cría' or s_q_3 = 'Type of breeding site') and (s_a_3 = 'Sumideros' or s_a_3 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and s_a_2 = 'No'));""")
-cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (s_q_3 = 'Selecciona lloc de cria' and s_a_3 = 'Embornals' and s_q_1 = 'Conté aigua estancada?' and s_a_1 = 'Sí');""")
-cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (s_q_3 = 'Selecciona lloc de cria' and s_a_3 = 'Embornals' and s_q_1 = 'Conté aigua estancada?' and s_a_1 = 'No');""")
-cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='breeding_site_other' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat <> 0 and expert_validated = FALSE;""")
 #end of special classification for 2014 sites
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='mosquito_tiger_confirmed' where type='adult' and expert_validated=True and expert_validation_result='albopictus#2' and n_photos > 0 and final_expert_status=1;""")
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='mosquito_tiger_probable' where type='adult' and expert_validated=True and expert_validation_result='albopictus#1' and n_photos > 0 and final_expert_status=1;""")
@@ -296,6 +294,16 @@ cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='trash_layer' 
 # Currently 3 points - in this case the user says it's a dry storm drain while the expert says there's water. We lean toward the expert
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where private_webmap_layer IS NULL and expert_validation_result = 'site#1';""")
 #add photos to unfiltered sites. They don't have photo because there is no movelab_annotation
+#special classification for 2014 sites
+#2014 auto-validated sites don't have movelab_annotation, therefore they are always labeled as expert_validated = false
+#they have to be manually classified in storm drain (water/dry) and other manually
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and ((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (s_a_1 = 'Sumideros' or s_a_1 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and (s_a_2 = 'Sí' or s_a_2 = 'Yes'))));""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_1 = 'Tipo de lugar de cría' or s_q_1 = 'Type of breeding site') and (s_a_1 = 'Sumideros' or s_a_1 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and s_a_2 = 'No'));""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_3 = 'Tipo de lugar de cría' or s_q_3 = 'Type of breeding site') and (s_a_3 = 'Sumideros' or s_a_3 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and (s_a_2 = 'Sí' or s_a_2 = 'Yes')));""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (((s_q_3 = 'Tipo de lugar de cría' or s_q_3 = 'Type of breeding site') and (s_a_3 = 'Sumideros' or s_a_3 = 'Storm drain')) or ((s_q_2 = '¿Contiene agua estancada?' or s_q_2 = 'Does it have stagnant water inside?') and s_a_2 = 'No'));""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (s_q_3 = 'Selecciona lloc de cria' and s_a_3 = 'Embornals' and s_q_1 = 'Conté aigua estancada?' and s_a_1 = 'Sí');""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_dry' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat = 0 and expert_validated = FALSE and (s_q_3 = 'Selecciona lloc de cria' and s_a_3 = 'Embornals' and s_q_1 = 'Conté aigua estancada?' and s_a_1 = 'No');""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='breeding_site_other' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat <> 0 and expert_validated = FALSE;""")
 add_photo_to_unfiltered_sites(cursor)
 #regenerate map view (drop table destroys it)
 print "Regenerating views"
