@@ -9,7 +9,7 @@ import psycopg2
 from django.utils.dateparse import parse_datetime
 
 def add_photo_to_unfiltered_sites(cursor):
-    cursor.execute("""SELECT m.version_uuid,p.photo FROM map_aux_reports m,tigaserver_app_photo p WHERE p.report_id = m.version_uuid and ( private_webmap_layer='breeding_site_not_yet_filtered' or private_webmap_layer='storm_drain_water' or private_webmap_layer='storm_drain_dry' or private_webmap_layer='breeding_site_other') and n_photos > 0 and photo_url='' and p.hide=false;""")
+    cursor.execute("""SELECT m.version_uuid,p.photo FROM map_aux_reports m,tigaserver_app_photo p WHERE p.report_id = m.version_uuid and ( private_webmap_layer='breeding_site_not_yet_filtered' or private_webmap_layer='storm_drain_water' or private_webmap_layer='storm_drain_dry' or private_webmap_layer='breeding_site_other' or private_webmap_layer='trash_layer') and n_photos > 0 and photo_url='' and p.hide=false;""")
     result = cursor.fetchall()
     last_uuid = '-1'
     for row in result:
