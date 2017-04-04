@@ -83,7 +83,7 @@ filenames = []
 # #####################################################################################################
 # This block should only be uncommented running the script locally and with pregenerated map data files
 # #####################################################################################################
-
+'''
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2014.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2015.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2016.json")
@@ -92,8 +92,8 @@ filenames.append("/tmp/hidden_reports2014.json")
 filenames.append("/tmp/hidden_reports2015.json")
 filenames.append("/tmp/hidden_reports2016.json")
 filenames.append("/tmp/hidden_reports2017.json")
-
 '''
+
 r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
 if r.status_code == 200:
     file = "/tmp/cfa.json"
@@ -144,7 +144,7 @@ if r.status_code == 200:
     text_file.close()
 else:
     print 'Warning: coverage month response status code is ' + str(r.status_code)
-'''
+
 
 conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params['db_name'] + "' user='" + config.params['db_user'] + "' password='" + config.params['db_password'] + "'"
 print "Connecting to database"
@@ -320,7 +320,7 @@ cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_d
 #Move site#0 to breeding_site_other
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='breeding_site_other' where type='site' and expert_validated=True and ( expert_validation_result='site#0' or expert_validation_result='site#1' or expert_validation_result='site#2') and storm_drain_status='other' and final_expert_status=1;""")
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='breeding_site_not_yet_filtered' where type='site' and expert_validated=False;""")
-cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='trash_layer' where ( visible = False and final_expert_status<>0 ) or (expert_validated = True and (expert_validation_result='none#-3' or expert_validation_result='site#-3' or expert_validation_result='site#0' or expert_validation_result='none#none') and (final_expert_status = 1 or final_expert_status = -1)) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 0) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1')and final_expert_status = 1);""")
+cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='trash_layer' where ( visible = False and final_expert_status<>0 ) or (expert_validated = True and (expert_validation_result='none#-3' or expert_validation_result='site#-3' or expert_validation_result='site#0' or expert_validation_result='none#none') and (final_expert_status = 1 or final_expert_status = -1)) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 0) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 1);""")
 #visible set to false
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='not_yet_validated' where type='adult' and expert_validated=False and n_photos > 0 and visible=False;""")
 
