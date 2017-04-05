@@ -8,6 +8,13 @@ import config
 import psycopg2
 from django.utils.dateparse import parse_datetime
 
+def move_hidden_adult_report_to_trash_layer(cursor):
+    cursor.execute("""select "version_UUID" from tigaserver_app_report where hide=True and type='adult';""")
+    result = cursor.fetchall()
+    for row in result:
+        uuid = row[0]
+        cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='trash_layer' WHERE version_uuid=%s;""",(uuid,))
+
 def add_photo_to_not_yet_filtered_adults(cursor):
     cursor.execute("""SELECT m.version_uuid,p.photo FROM map_aux_reports m,tigaserver_app_photo p WHERE p.report_id = m.version_uuid and private_webmap_layer='not_yet_validated' and n_photos > 0 and photo_url='' and p.hide=false;""")
     result = cursor.fetchall()
@@ -343,6 +350,7 @@ cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_d
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='breeding_site_other' where type='site' and expert_validation_result = 'site#-4' and to_char(observation_date, 'YYYY') = '2014' and site_cat <> 0 and expert_validated = FALSE;""")
 add_photo_to_unfiltered_sites(cursor)
 add_photo_to_not_yet_filtered_adults(cursor)
+move_hidden_adult_report_to_trash_layer(cursor)
 
 print "Adjusting coarse filter adults"
 adjust_coarse_filter(cursor,"/tmp/cfa.json","not_yet_validated")
