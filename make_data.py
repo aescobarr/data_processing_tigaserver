@@ -310,6 +310,9 @@ for file in filenames:
             actualitza_nota_usuari(cursor, bit['version_UUID'], note)        
             conn.commit()
 
+print "Removing duplicates"
+cursor.execute("""DELETE FROM map_aux_reports WHERE id IN (SELECT id FROM (SELECT id,ROW_NUMBER() OVER (partition BY version_uuid,observation_date,lon,lat,ref_system,type,breeding_site_answers,mosquito_answers,expert_validated,expert_validation_result,simplified_expert_validation_result,site_cat,storm_drain_status,edited_user_notes,photo_url,photo_license,dataset_license,single_report_map_url,n_photos,visible,final_expert_status,note,private_webmap_layer,t_q_1,t_q_2,t_q_3,t_a_1,t_a_2,t_a_3,s_q_1,s_q_2,s_q_3,s_q_4,s_a_1,s_a_2,s_a_3,s_a_4 ORDER BY id) AS rnum FROM map_aux_reports) t WHERE t.rnum > 1);""")
+
 print "Updating database"
 #special points -> site#-4 are auto validated
 cursor.execute("""UPDATE map_aux_reports set expert_validation_result = 'site#-4' where version_uuid in (select report_id from tigacrafting_expertreportannotation where site_certainty_notes='auto');""")
