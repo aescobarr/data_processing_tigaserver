@@ -8,6 +8,9 @@ import config
 import psycopg2
 from django.utils.dateparse import parse_datetime
 
+def update_user_uuids(cursor):
+    cursor.execute("""UPDATE map_aux_reports m set user_id=(SELECT user_id from tigaserver_app_report r where m.version_uuid=r."version_UUID");""")
+
 def move_hidden_adult_report_to_trash_layer(cursor):
     cursor.execute("""select "version_UUID" from tigaserver_app_report where hide=True and type='adult';""")
     result = cursor.fetchall()
@@ -24,7 +27,7 @@ def add_photo_to_not_yet_filtered_adults(cursor):
         if current_uuid != last_uuid:
             #do stuff
             cursor.execute("""UPDATE map_aux_reports set photo_url=%s WHERE version_uuid=%s;""",('/media/' + row[1],row[0],))
-        last_uuid=current_uuid;    
+        last_uuid=current_uuid;
 
 def add_photo_to_unfiltered_sites(cursor):
     cursor.execute("""SELECT m.version_uuid,p.photo FROM map_aux_reports m,tigaserver_app_photo p WHERE p.report_id = m.version_uuid and ( private_webmap_layer='breeding_site_not_yet_filtered' or private_webmap_layer='storm_drain_water' or private_webmap_layer='storm_drain_dry' or private_webmap_layer='breeding_site_other' or private_webmap_layer='trash_layer') and n_photos > 0 and photo_url='' and p.hide=false;""")
@@ -38,7 +41,7 @@ def add_photo_to_unfiltered_sites(cursor):
         last_uuid=current_uuid;
 
 def adjust_coarse_filter(cursor,file,webmap_layer):
-    json_data = open(file)    
+    json_data = open(file)
     data = json.load(json_data)
     for bit in data:
         version_UUID = bit["version_UUID"]
@@ -169,8 +172,8 @@ cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid
 	"t_q_1 character varying(255), t_q_2 character varying(255), t_q_3 character varying(255), "\
 	"t_a_1 character varying(255), t_a_2 character varying(255), t_a_3 character varying(255), "\
 	"s_q_1 character varying(255), s_q_2 character varying(255), s_q_3 character varying(255), s_q_4 character varying(255),"\
-	"s_a_1 character varying(255), s_a_2 character varying(255), s_a_3 character varying(255), s_a_4 character varying(255)"\
-	");")
+	"s_a_1 character varying(255), s_a_2 character varying(255), s_a_3 character varying(255), s_a_4 character varying(255),"\
+	"user_id character varying(36));")
 conn.commit()
 
 #for year in range(2014, this_year+1):
@@ -178,7 +181,7 @@ for file in filenames:
     print "Writing file %s  to database" % file
     json_data = open(file)
     data = json.load(json_data)
-    for bit in data:        
+    for bit in data:
         creation_date_str = bit['creation_time']
         creation_date = parse_datetime(creation_date_str)
         site_responses_str = ''
@@ -213,15 +216,15 @@ for file in filenames:
                 site_answers[index_s] = bit['site_responses_text'][key]
                 index_s = index_s+1
 
-        validated = False                
+        validated = False
         if bit['movelab_annotation'] != None and bit['movelab_annotation'] and bit['movelab_annotation'] != 'None' and bit['movelab_annotation'] != '':
             validated = True
-            if bit['type'] == 'adult':                
+            if bit['type'] == 'adult':
                 if file.find("2014") >= 0:
                     if bit['movelab_annotation']['tiger_certainty_category'] != None and bit['movelab_annotation']['tiger_certainty_category'] and bit['movelab_annotation']['tiger_certainty_category'] != 'None' and bit['movelab_annotation']['tiger_certainty_category'] != '':
-                        if bit['movelab_annotation']['tiger_certainty_category'] <= 0:                            
+                        if bit['movelab_annotation']['tiger_certainty_category'] <= 0:
                             expert_validation_result = 'none#' + str(bit['movelab_annotation']['tiger_certainty_category'])
-                        else:       
+                        else:
                             expert_validation_result = 'albopictus#' + str(bit['movelab_annotation']['tiger_certainty_category'])
                     else:
                         validated = False
@@ -232,19 +235,19 @@ for file in filenames:
                             photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
                     except KeyError:
                         pass
-                else:                    
+                else:
                     if bit['movelab_annotation']['classification'] and bit['movelab_annotation']['classification'] != 'None' and bit['movelab_annotation']['classification'] != '':
                         if bit['movelab_annotation']['classification'] == 'albopictus':
                             expert_validation_result = bit['movelab_annotation']['classification'] + '#' + str(bit['movelab_annotation']['tiger_certainty_category'])
                         elif bit['movelab_annotation']['classification'] == 'aegypti':
                             expert_validation_result = bit['movelab_annotation']['classification'] + '#' + str(bit['movelab_annotation']['aegypti_certainty_category'])
                         else:
-                            expert_validation_result = bit['movelab_annotation']['classification'] + '#' + str(bit['movelab_annotation']['score'])                    
+                            expert_validation_result = bit['movelab_annotation']['classification'] + '#' + str(bit['movelab_annotation']['score'])
                     try:
                         if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation']['photo_html'] and bit['movelab_annotation']['photo_html'] != 'None' and bit['movelab_annotation']['photo_html'] != '':
                             photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
                     except KeyError:
-                        pass            
+                        pass
             elif bit['type'] == 'site':
                 expert_validation_result = 'site#' + str(bit['movelab_annotation']['site_certainty_category'])
                 try:
@@ -256,20 +259,20 @@ for file in filenames:
                 pass
             if bit['movelab_annotation']['edited_user_notes'] != None and bit['movelab_annotation']['edited_user_notes'] and bit['movelab_annotation']['edited_user_notes'] != 'None' and bit['movelab_annotation']['edited_user_notes'] != '':
                 edited_user_notes = bit['movelab_annotation']['edited_user_notes']
-        if bit['site_responses'] and bit['site_responses'] != 'None' and bit['site_responses'] != '':                        
-            try:                
+        if bit['site_responses'] and bit['site_responses'] != 'None' and bit['site_responses'] != '':
+            try:
                 site_responses_str = str(bit['site_responses']['q1_response']) + '#' + str(bit['site_responses']['q2_response'])
             except KeyError:
                 pass
             try:
                 site_responses_str = str(bit['site_responses']['q1_response_new']) + '#' + str(bit['site_responses']['q2_response_new']) + '#' + str(bit['site_responses']['q3_response_new'])
             except KeyError:
-                pass        
+                pass
         if bit['tiger_responses'] and bit['tiger_responses'] is not None and bit['tiger_responses'] != 'None' and bit['tiger_responses'] != '':
             try:
                 tiger_responses_str = str(bit['tiger_responses']['q1_response']) + '#' + str(bit['tiger_responses']['q2_response']) + '#' + str(bit['tiger_responses']['q3_response'])
             except KeyError:
-                print "Error evaluating responses " 
+                print "Error evaluating responses "
                 print bit['tiger_responses']
                 tiger_responses_str = "0#0#" + str(bit['tiger_responses']['q3_response'])
 
@@ -277,9 +280,9 @@ for file in filenames:
             if expert_validation_result == 'albopictus#1' or expert_validation_result == 'albopictus#2':
                 simplified_expert_validation_result = 'albopictus'
             elif expert_validation_result == 'aegypti#1' or expert_validation_result == 'aegypti#2':
-                simplified_expert_validation_result = 'aegypti'            
+                simplified_expert_validation_result = 'aegypti'
             elif expert_validation_result == 'albopictus#-1' or expert_validation_result == 'albopictus#-2' or expert_validation_result == 'aegypti#-1' or expert_validation_result == 'aegypti#-2' or expert_validation_result == 'none#-1' or expert_validation_result == 'none#-2':
-                simplified_expert_validation_result = 'noseparece'            
+                simplified_expert_validation_result = 'noseparece'
             elif expert_validation_result == 'albopictus#0' or expert_validation_result == 'aegypti#0' or expert_validation_result == 'none#0' or expert_validation_result == 'none#none':
                 simplified_expert_validation_result = 'nosesabe'
             elif expert_validation_result.startswith('site#'):
@@ -287,7 +290,7 @@ for file in filenames:
 
         if simplified_expert_validation_result != '' and simplified_expert_validation_result == 'site':
             if bit['site_cat'] != 0:
-                storm_drain_status = 'other'                
+                storm_drain_status = 'other'
                 simplified_expert_validation_result = simplified_expert_validation_result + "#" + storm_drain_status
             else:
                 # if site_responses_str == '':
@@ -300,14 +303,14 @@ for file in filenames:
                 else:
                     storm_drain_status = 'other'
 
-        single_report_map_url = 'http://' + server_url + '/es/single_report_map/' + bit['version_UUID']        
+        single_report_map_url = 'http://' + server_url + '/es/single_report_map/' + bit['version_UUID']
 
-        
+
         #kill conditions
         if bit['latest_version'] == True:
             cursor.execute("""INSERT INTO map_aux_reports(version_uuid, observation_date,lon,lat,ref_system,type,breeding_site_answers,mosquito_answers,expert_validated,expert_validation_result,simplified_expert_validation_result,site_cat,storm_drain_status,edited_user_notes,photo_url,single_report_map_url,n_photos,visible,final_expert_status,t_q_1, t_q_2, t_q_3, t_a_1, t_a_2, t_a_3, s_q_1, s_q_2, s_q_3, s_q_4, s_a_1, s_a_2, s_a_3, s_a_4) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);""",(bit['version_UUID'], creation_date, bit['lon'], bit['lat'],'WGS84', bit['type'], site_responses_str, tiger_responses_str, validated, expert_validation_result, simplified_expert_validation_result,bit['site_cat'],storm_drain_status, edited_user_notes, photo_html_str, single_report_map_url,bit['n_photos'],bit['visible'],bit['final_expert_status_text'],tiger_questions[0], tiger_questions[1], tiger_questions[2], tiger_answers[0], tiger_answers[1], tiger_answers[2], site_questions[0], site_questions[1], site_questions[2], site_questions[3], site_answers[0], site_answers[1], site_answers[2], site_answers[3]))
             note = get_nota_usuari_de_report(cursor,bit['version_UUID'])
-            actualitza_nota_usuari(cursor, bit['version_UUID'], note)        
+            actualitza_nota_usuari(cursor, bit['version_UUID'], note)
             conn.commit()
 
 print "Removing duplicates"
@@ -331,7 +334,7 @@ cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='storm_drain_d
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='breeding_site_other' where type='site' and expert_validated=True and ( expert_validation_result='site#0' or expert_validation_result='site#1' or expert_validation_result='site#2') and storm_drain_status='other' and final_expert_status=1;""")
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='breeding_site_not_yet_filtered' where type='site' and expert_validated=False;""")
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='trash_layer' where ( visible = False and final_expert_status<>0 ) or (expert_validated = True and (expert_validation_result='none#-3' or expert_validation_result='site#-3' or expert_validation_result='site#0' or expert_validation_result='none#none') and (final_expert_status = 1 or final_expert_status = -1)) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 0) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 1);""")
-#visible set to false
+#visible set to false - if the reports have'nt been validated they won't be visible
 cursor.execute("""UPDATE map_aux_reports set private_webmap_layer='not_yet_validated' where type='adult' and expert_validated=False and n_photos > 0 and visible=False;""")
 
 #Move site#0 to breeding_site_other
@@ -359,6 +362,9 @@ print "Adjusting coarse filter adults"
 adjust_coarse_filter(cursor,"/tmp/cfa.json","not_yet_validated")
 print "Adjusting coarse filter sites"
 adjust_coarse_filter(cursor,"/tmp/cfs.json","breeding_site_not_yet_filtered")
+
+print "Filling user ids"
+update_user_uuids(cursor)
 
 #regenerate map view (drop table destroys it)
 print "Regenerating views"
