@@ -10,7 +10,9 @@ os.chdir(proj_path)
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
 
-import datetime
+from datetime import datetime
+#import datetime
+import pytz
 import logging
 from django.db.models import Count
 from tigaserver_app.models import Report
@@ -32,7 +34,8 @@ dryRun = False
 if len(args) > 1 and args[1] == 'dryrun':
 	dryRun = True
 auto_validation_user = User.objects.get(pk=24)
-now = datetime.datetime.now()
+#we use datetimes with time zone info
+now = datetime.utcnow().replace(tzinfo=pytz.utc)
 logname = "/home/webuser/webapps/data_preprocessing/auto-validation-" + now.strftime("%d-%m-%Y") + ".log"
 logging.basicConfig(filename=logname,level=logging.INFO)
 
@@ -49,15 +52,21 @@ new_reports_unfiltered_sites = new_reports_unfiltered_sites_embornal | new_repor
 
 new_reports_unfiltered_sites = filter_reports(new_reports_unfiltered_sites,False)
 
+if len(new_reports_unfiltered_sites) == 0:
+	logging.info("No site reports to validate")
 
 for report in new_reports_unfiltered_sites:
-	naive = report.server_upload_time.replace(tzinfo=None)
-	elapsed_days = (now-naive).days
-	if elapsed_days > 2:
+	#we use datetimes with time zone info
+	report_time = report.server_upload_time
+	elapsed_seconds = (now-report_time).total_seconds()
+	elapsed_minutes = elapsed_seconds / 60.0
+	elapsed_hours = elapsed_minutes / 60
+	elapsed_days = elapsed_hours / 24.0
+	if elapsed_days >= 2:
 		if dryRun == True:
-			logging.info("Dry run - Auto validating report {0} ".format(report.version_UUID))
+			logging.info("Dry run - Auto validating report {0}, elapsed days {1}".format(report.version_UUID,elapsed_days))
 		else:
-			logging.info("Auto validating report {0} ".format(report.version_UUID))
+			logging.info("Auto validating report {0}, elapsed days {1}".format(report.version_UUID,elapsed_days))
 		if dryRun == False:
 			photo = report.photos.first()
 			new_annotation = ExpertReportAnnotation(report=report, user=auto_validation_user)
@@ -66,3 +75,6 @@ for report in new_reports_unfiltered_sites:
 			new_annotation.validation_complete = True
 			new_annotation.revise = True
 			new_annotation.save()
+	else:
+		if dryRun == True:
+			logging.info("Dry run - NOT AUTO VALIDATING report {0}, elapsed days {1}".format(report.version_UUID,elapsed_days))
