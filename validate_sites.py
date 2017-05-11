@@ -53,7 +53,7 @@ new_reports_unfiltered_sites = filter_reports(new_reports_unfiltered_sites,False
 for report in new_reports_unfiltered_sites:
 	naive = report.server_upload_time.replace(tzinfo=None)
 	elapsed_days = (now-naive).days
-	if elapsed_days > 3:
+	if elapsed_days > 2:
 		if dryRun == True:
 			logging.info("Dry run - Auto validating report {0} ".format(report.version_UUID))
 		else:
