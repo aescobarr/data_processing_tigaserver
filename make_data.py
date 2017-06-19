@@ -10,17 +10,14 @@ from django.utils.dateparse import parse_datetime
 
 
 def update_municipalities(cursor):
-    try:
-        cursor.execute(
-            """SELECT r.version_uuid, muni.nom_muni FROM municipis_4326 muni,map_aux_reports r WHERE st_within(st_setsrid(st_point(r.lon,r.lat),4326),muni.geom)""")
-        result = cursor.fetchall()
-        for row in result:
-            uuid = row[0]
-            municipality = row[1]
-            cursor.execute("""UPDATE map_aux_reports set municipality=%s WHERE version_uuid=%s;""",
-                           (municipality, uuid,))
-    except psycopg2.ProgrammingError:
-        pass
+    cursor.execute(
+        """SELECT r.version_uuid, muni.nom_muni FROM municipis_4326 muni,map_aux_reports r WHERE st_within(st_setsrid(st_point(r.lon,r.lat),4326),muni.geom)""")
+    result = cursor.fetchall()
+    for row in result:
+        uuid = row[0]
+        municipality = row[1]
+        cursor.execute("""UPDATE map_aux_reports set municipality=%s WHERE version_uuid=%s;""",
+                       (municipality, uuid,))
 
 
 def update_user_uuids(cursor):
