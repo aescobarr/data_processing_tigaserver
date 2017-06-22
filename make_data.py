@@ -11,7 +11,7 @@ from django.utils.dateparse import parse_datetime
 
 def update_municipalities(cursor):
     cursor.execute(
-        """SELECT r.version_uuid, muni.nom_muni FROM municipis_4326 muni,map_aux_reports r WHERE st_within(st_setsrid(st_point(r.lon,r.lat),4326),muni.geom)""")
+        """SELECT r.version_uuid, muni.nombre FROM municipis_4326 muni,map_aux_reports r WHERE st_within(st_setsrid(st_point(r.lon,r.lat),4326),muni.geom)""")
     result = cursor.fetchall()
     for row in result:
         uuid = row[0]
