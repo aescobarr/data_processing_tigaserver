@@ -209,7 +209,7 @@ cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid
                "s_q_1 character varying(255), s_q_2 character varying(255), s_q_3 character varying(255), s_q_4 character varying(255)," \
                "s_a_1 character varying(255), s_a_2 character varying(255), s_a_3 character varying(255), s_a_4 character varying(255)," \
                "user_id character varying(36)," \
-               "municipality character varying(45)" \
+               "municipality character varying(100)" \
                ");")
 conn.commit()
 
