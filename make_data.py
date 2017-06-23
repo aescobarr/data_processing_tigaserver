@@ -461,7 +461,187 @@ update_municipalities(cursor)
 
 # regenerate map view (drop table destroys it)
 print "Regenerating views"
-cursor.execute("""CREATE MATERIALIZED VIEW reports_map_data AS WITH validated_data AS (SELECT map_aux_reports.private_webmap_layer AS category,map_aux_reports.id,map_aux_reports.observation_date,map_aux_reports.lat,map_aux_reports.lon,map_aux_reports.expert_validation_result FROM map_aux_reports WHERE map_aux_reports.final_expert_status <> 0 AND map_aux_reports.lon IS NOT NULL AND map_aux_reports.lat IS NOT NULL AND map_aux_reports.lat <> (-1)::double precision AND map_aux_reports.lon <> (-1)::double precision) SELECT foo2.id,foo2.c,foo2.expert_validation_result,foo2.category,foo2.month,st_x(foo2.geom) AS lon,st_y(foo2.geom) AS lat,2 AS geohashlevel,st_setsrid(foo2.geom, 4326) AS geom FROM ( SELECT count(*) AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 2))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 2), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo2 UNION SELECT foo3.id,foo3.c,foo3.expert_validation_result,foo3.category,foo3.month,st_x(foo3.geom) AS lon,st_y(foo3.geom) AS lat,3 AS geohashlevel,st_setsrid(foo3.geom, 4326) AS geom FROM ( SELECT count(*) AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 3))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 3), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo3 UNION SELECT foo4.id,foo4.c,foo4.expert_validation_result,foo4.category,foo4.month,st_x(foo4.geom) AS lon,st_y(foo4.geom) AS lat,4 AS geohashlevel,st_setsrid(foo4.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category, validated_data.expert_validation_result, to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 4))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 4), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo4 UNION SELECT foo5.id,foo5.c,foo5.expert_validation_result,foo5.category,foo5.month,st_x(foo5.geom) AS lon,st_y(foo5.geom) AS lat,5 AS geohashlevel,st_setsrid(foo5.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 5))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 5), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo5 UNION SELECT foo7.id, foo7.c,foo7.expert_validation_result,foo7.category,foo7.month,st_x(foo7.geom) AS lon,st_y(foo7.geom) AS lat,7 AS geohashlevel,st_setsrid(foo7.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 7))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 7), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo7 UNION SELECT foo8.id,foo8.c,foo8.expert_validation_result,foo8.category,foo8.month,foo8.lon,foo8.lat,8 AS geohashlevel,st_setsrid(st_makepoint(foo8.lon, foo8.lat), 4326) AS geom FROM ( SELECT 1 AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,validated_data.lon,validated_data.lat,validated_data.id FROM validated_data) foo8 ORDER BY 7 WITH DATA;""")
+#cursor.execute("""CREATE MATERIALIZED VIEW reports_map_data AS WITH validated_data AS (SELECT map_aux_reports.private_webmap_layer AS category,map_aux_reports.id,map_aux_reports.observation_date,map_aux_reports.lat,map_aux_reports.lon,map_aux_reports.expert_validation_result FROM map_aux_reports WHERE map_aux_reports.final_expert_status <> 0 AND map_aux_reports.lon IS NOT NULL AND map_aux_reports.lat IS NOT NULL AND map_aux_reports.lat <> (-1)::double precision AND map_aux_reports.lon <> (-1)::double precision) SELECT foo2.id,foo2.c,foo2.expert_validation_result,foo2.category,foo2.month,st_x(foo2.geom) AS lon,st_y(foo2.geom) AS lat,2 AS geohashlevel,st_setsrid(foo2.geom, 4326) AS geom FROM ( SELECT count(*) AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 2))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 2), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo2 UNION SELECT foo3.id,foo3.c,foo3.expert_validation_result,foo3.category,foo3.month,st_x(foo3.geom) AS lon,st_y(foo3.geom) AS lat,3 AS geohashlevel,st_setsrid(foo3.geom, 4326) AS geom FROM ( SELECT count(*) AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 3))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 3), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo3 UNION SELECT foo4.id,foo4.c,foo4.expert_validation_result,foo4.category,foo4.month,st_x(foo4.geom) AS lon,st_y(foo4.geom) AS lat,4 AS geohashlevel,st_setsrid(foo4.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category, validated_data.expert_validation_result, to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 4))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 4), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo4 UNION SELECT foo5.id,foo5.c,foo5.expert_validation_result,foo5.category,foo5.month,st_x(foo5.geom) AS lon,st_y(foo5.geom) AS lat,5 AS geohashlevel,st_setsrid(foo5.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 5))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 5), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo5 UNION SELECT foo7.id, foo7.c,foo7.expert_validation_result,foo7.category,foo7.month,st_x(foo7.geom) AS lon,st_y(foo7.geom) AS lat,7 AS geohashlevel,st_setsrid(foo7.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 7))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 7), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo7 UNION SELECT foo8.id,foo8.c,foo8.expert_validation_result,foo8.category,foo8.month,foo8.lon,foo8.lat,8 AS geohashlevel,st_setsrid(st_makepoint(foo8.lon, foo8.lat), 4326) AS geom FROM ( SELECT 1 AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,validated_data.lon,validated_data.lat,validated_data.id FROM validated_data) foo8 ORDER BY 7 WITH DATA;""")
+cursor.execute("""
+CREATE MATERIALIZED VIEW public.reports_map_data AS 
+ WITH validated_data AS (
+         SELECT map_aux_reports.private_webmap_layer AS category,
+            map_aux_reports.id,
+            map_aux_reports.version_uuid,
+            map_aux_reports.observation_date,
+            map_aux_reports.lat,
+            map_aux_reports.lon,
+            map_aux_reports.expert_validation_result
+           FROM map_aux_reports
+          WHERE map_aux_reports.final_expert_status <> 0 AND map_aux_reports.lon IS NOT NULL AND map_aux_reports.lat IS NOT NULL AND map_aux_reports.lat <> '-1'::integer::double precision AND map_aux_reports.lon <> '-1'::integer::double precision
+        )
+ SELECT foo2.id,
+    foo2.version_uuid,
+    foo2.c,
+    foo2.expert_validation_result,
+    foo2.category,
+    foo2.month,
+    st_x(foo2.geom) AS lon,
+    st_y(foo2.geom) AS lat,
+    2 AS geohashlevel,
+    st_setsrid(foo2.geom, 4326) AS geom
+   FROM ( SELECT count(*) AS c,
+            validated_data.category,
+            validated_data.expert_validation_result,
+            to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,
+                CASE
+                    WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326)
+                    ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 2)))
+                END AS geom,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer
+                    ELSE NULL::integer
+                END AS id,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.version_uuid::text, ','::text)::character varying
+                    ELSE NULL::character varying
+                END AS version_uuid
+           FROM validated_data
+          GROUP BY validated_data.category, (st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 2)), (to_char(validated_data.observation_date, 'YYYYMM'::text)), validated_data.expert_validation_result) foo2
+UNION
+ SELECT foo3.id,
+    foo3.version_uuid,
+    foo3.c,
+    foo3.expert_validation_result,
+    foo3.category,
+    foo3.month,
+    st_x(foo3.geom) AS lon,
+    st_y(foo3.geom) AS lat,
+    3 AS geohashlevel,
+    st_setsrid(foo3.geom, 4326) AS geom
+   FROM ( SELECT count(*) AS c,
+            validated_data.category,
+            validated_data.expert_validation_result,
+            to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,
+                CASE
+                    WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326)
+                    ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 3)))
+                END AS geom,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer
+                    ELSE NULL::integer
+                END AS id,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.version_uuid::text, ','::text)::character varying
+                    ELSE NULL::character varying
+                END AS version_uuid
+           FROM validated_data
+          GROUP BY validated_data.category, (st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 3)), (to_char(validated_data.observation_date, 'YYYYMM'::text)), validated_data.expert_validation_result) foo3
+UNION
+ SELECT foo4.id,
+    foo4.version_uuid,
+    foo4.c,
+    foo4.expert_validation_result,
+    foo4.category,
+    foo4.month,
+    st_x(foo4.geom) AS lon,
+    st_y(foo4.geom) AS lat,
+    4 AS geohashlevel,
+    st_setsrid(foo4.geom, 4326) AS geom
+   FROM ( SELECT count(*) AS c,
+            validated_data.category,
+            validated_data.expert_validation_result,
+            to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,
+                CASE
+                    WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326)
+                    ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 4)))
+                END AS geom,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer
+                    ELSE NULL::integer
+                END AS id,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.version_uuid::text, ','::text)::character varying
+                    ELSE NULL::character varying
+                END AS version_uuid
+           FROM validated_data
+          GROUP BY validated_data.category, (st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 4)), (to_char(validated_data.observation_date, 'YYYYMM'::text)), validated_data.expert_validation_result) foo4
+UNION
+ SELECT foo5.id,
+    foo5.version_uuid,
+    foo5.c,
+    foo5.expert_validation_result,
+    foo5.category,
+    foo5.month,
+    st_x(foo5.geom) AS lon,
+    st_y(foo5.geom) AS lat,
+    5 AS geohashlevel,
+    st_setsrid(foo5.geom, 4326) AS geom
+   FROM ( SELECT count(*) AS c,
+            validated_data.category,
+            validated_data.expert_validation_result,
+            to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,
+                CASE
+                    WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326)
+                    ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 5)))
+                END AS geom,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer
+                    ELSE NULL::integer
+                END AS id,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.version_uuid::text, ','::text)::character varying
+                    ELSE NULL::character varying
+                END AS version_uuid
+           FROM validated_data
+          GROUP BY validated_data.category, (st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 5)), (to_char(validated_data.observation_date, 'YYYYMM'::text)), validated_data.expert_validation_result) foo5
+UNION
+ SELECT foo7.id,
+    foo7.version_uuid,
+    foo7.c,
+    foo7.expert_validation_result,
+    foo7.category,
+    foo7.month,
+    st_x(foo7.geom) AS lon,
+    st_y(foo7.geom) AS lat,
+    7 AS geohashlevel,
+    st_setsrid(foo7.geom, 4326) AS geom
+   FROM ( SELECT count(*) AS c,
+            validated_data.category,
+            validated_data.expert_validation_result,
+            to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,
+                CASE
+                    WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326)
+                    ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 7)))
+                END AS geom,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer
+                    ELSE NULL::integer
+                END AS id,
+                CASE
+                    WHEN count(*)::integer = 1 THEN string_agg(validated_data.version_uuid::text, ','::text)::character varying
+                    ELSE NULL::character varying
+                END AS version_uuid
+           FROM validated_data
+          GROUP BY validated_data.category, (st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 7)), (to_char(validated_data.observation_date, 'YYYYMM'::text)), validated_data.expert_validation_result) foo7
+UNION
+ SELECT foo8.id,
+    foo8.version_uuid,
+    foo8.c,
+    foo8.expert_validation_result,
+    foo8.category,
+    foo8.month,
+    foo8.lon,
+    foo8.lat,
+    8 AS geohashlevel,
+    st_setsrid(st_makepoint(foo8.lon, foo8.lat), 4326) AS geom
+   FROM ( SELECT 1 AS c,
+            validated_data.category,
+            validated_data.expert_validation_result,
+            to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,
+            validated_data.lon,
+            validated_data.lat,
+            validated_data.id,
+            validated_data.version_uuid
+           FROM validated_data) foo8
+  ORDER BY 7
+WITH DATA;
+""")
 
 conn.commit()
 
