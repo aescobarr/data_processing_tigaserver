@@ -13,8 +13,8 @@ headers = {'Authorization': config.params['auth_token']}
 BCN_BB = {'min_lat': 41.321049, 'min_lon': 2.052380, 'max_lat': 41.468609, 'max_lon': 2.225610}
 
 def is_in_bcn(bit):
-	f_lon = float(bit['lon'])
-	f_lat = float(bit['lat'])
+	f_lon = bit['lon']
+	f_lat = bit['lat']
 	check_lat = BCN_BB['min_lat'] <= f_lat and f_lat <= BCN_BB['max_lat']
 	check_lon = BCN_BB['min_lon'] <= f_lon and f_lon <= BCN_BB['max_lon']
 	return check_lat and check_lon
