@@ -196,7 +196,7 @@ print "Connecting to database"
 conn = psycopg2.connect(conn_string)
 cursor = conn.cursor()
 cursor.execute("DROP TABLE IF EXISTS map_aux_reports CASCADE;")
-cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid character varying(36), " \
+cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid character varying(36) UNIQUE, " \
                "observation_date timestamp with time zone,lon double precision,lat double precision,ref_system character varying(36)," \
                "type character varying(7),breeding_site_answers character varying(100),mosquito_answers character varying(100)," \
                "expert_validated boolean,expert_validation_result character varying(100),simplified_expert_validation_result character varying(100)," \
@@ -366,22 +366,27 @@ for file in filenames:
 
         # kill conditions
         if bit['latest_version'] == True:
-            cursor.execute(
-                """INSERT INTO map_aux_reports(version_uuid, observation_date,lon,lat,ref_system,type,breeding_site_answers,mosquito_answers,expert_validated,expert_validation_result,simplified_expert_validation_result,site_cat,storm_drain_status,edited_user_notes,photo_url,single_report_map_url,n_photos,visible,final_expert_status,t_q_1, t_q_2, t_q_3, t_a_1, t_a_2, t_a_3, s_q_1, s_q_2, s_q_3, s_q_4, s_a_1, s_a_2, s_a_3, s_a_4) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
-                (bit['version_UUID'], creation_date, bit['lon'], bit['lat'], 'WGS84', bit['type'], site_responses_str,
-                 tiger_responses_str, validated, expert_validation_result, simplified_expert_validation_result,
-                 bit['site_cat'], storm_drain_status, edited_user_notes, photo_html_str, single_report_map_url,
-                 bit['n_photos'], bit['visible'], bit['final_expert_status_text'], tiger_questions[0],
-                 tiger_questions[1], tiger_questions[2], tiger_answers[0], tiger_answers[1], tiger_answers[2],
-                 site_questions[0], site_questions[1], site_questions[2], site_questions[3], site_answers[0],
-                 site_answers[1], site_answers[2], site_answers[3]))
-            note = get_nota_usuari_de_report(cursor, bit['version_UUID'])
-            actualitza_nota_usuari(cursor, bit['version_UUID'], note)
-            conn.commit()
+            try:
+                cursor.execute(
+                    """INSERT INTO map_aux_reports(version_uuid, observation_date,lon,lat,ref_system,type,breeding_site_answers,mosquito_answers,expert_validated,expert_validation_result,simplified_expert_validation_result,site_cat,storm_drain_status,edited_user_notes,photo_url,single_report_map_url,n_photos,visible,final_expert_status,t_q_1, t_q_2, t_q_3, t_a_1, t_a_2, t_a_3, s_q_1, s_q_2, s_q_3, s_q_4, s_a_1, s_a_2, s_a_3, s_a_4) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
+                    (bit['version_UUID'], creation_date, bit['lon'], bit['lat'], 'WGS84', bit['type'], site_responses_str,
+                     tiger_responses_str, validated, expert_validation_result, simplified_expert_validation_result,
+                     bit['site_cat'], storm_drain_status, edited_user_notes, photo_html_str, single_report_map_url,
+                     bit['n_photos'], bit['visible'], bit['final_expert_status_text'], tiger_questions[0],
+                     tiger_questions[1], tiger_questions[2], tiger_answers[0], tiger_answers[1], tiger_answers[2],
+                     site_questions[0], site_questions[1], site_questions[2], site_questions[3], site_answers[0],
+                     site_answers[1], site_answers[2], site_answers[3]))
+                note = get_nota_usuari_de_report(cursor, bit['version_UUID'])
+                actualitza_nota_usuari(cursor, bit['version_UUID'], note)
+                conn.commit()
+            except:
+                conn.rollback()
 
+'''
 print "Removing duplicates"
 cursor.execute(
     """DELETE FROM map_aux_reports WHERE id IN (SELECT id FROM (SELECT id,ROW_NUMBER() OVER (partition BY version_uuid,observation_date,lon,lat,ref_system,type,breeding_site_answers,mosquito_answers,expert_validated,expert_validation_result,simplified_expert_validation_result,site_cat,storm_drain_status,edited_user_notes,photo_url,photo_license,dataset_license,single_report_map_url,n_photos,visible,final_expert_status,note,private_webmap_layer,t_q_1,t_q_2,t_q_3,t_a_1,t_a_2,t_a_3,s_q_1,s_q_2,s_q_3,s_q_4,s_a_1,s_a_2,s_a_3,s_a_4 ORDER BY id) AS rnum FROM map_aux_reports) t WHERE t.rnum > 1);""")
+'''
 
 print "Updating database"
 # special points -> site#-4 are auto validated
