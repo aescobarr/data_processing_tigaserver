@@ -453,6 +453,10 @@ add_photo_to_unfiltered_sites(cursor)
 add_photo_to_not_yet_filtered_adults(cursor)
 move_hidden_adult_report_to_trash_layer(cursor)
 
+#Added field municipality_id to table, petition by SIGTE
+cursor.execute("""ALTER TABLE map_aux_reports add column municipality_id integer;""")
+cursor.execute("""UPDATE map_aux_reports set municipality_id = foo.gid from ( SELECT r.version_uuid, muni.nombre, muni.gid FROM municipis_4326 muni,map_aux_reports r WHERE st_within(st_setsrid(st_point(r.lon,r.lat),4326),muni.geom)) as foo where foo.version_uuid = map_aux_reports.version_uuid;""")
+
 print "Adjusting coarse filter adults"
 adjust_coarse_filter(cursor, "/tmp/cfa.json", "not_yet_validated")
 print "Adjusting coarse filter sites"
