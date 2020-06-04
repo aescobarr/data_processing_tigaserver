@@ -19,6 +19,21 @@ def update_municipalities(cursor):
         cursor.execute("""UPDATE map_aux_reports set municipality=%s WHERE version_uuid=%s;""",
                        (municipality, uuid,))
 
+def update_tags(cursor):
+    cursor.execute(
+        """select a.report_id, t.slug from  taggit_taggeditem ti, taggit_tag t, tigacrafting_expertreportannotation a where ti.tag_id = t.id AND ti.object_id = a.id""")
+    accumulated_tags = {}
+    result = cursor.fetchall()
+    for row in result:
+        report_id = row[0]
+        tag = row[1]
+        tag_array = accumulated_tags.get(report_id,[])
+        tag_array.append(tag)
+        accumulated_tags[report_id] = tag_array
+    for key in accumulated_tags.keys():
+        tags = accumulated_tags[key]
+        cursor.execute("""UPDATE map_aux_reports set tags=%s where version_uuid=%s;""",( str(tags),key ))
+
 
 def update_user_uuids(cursor):
     cursor.execute(
@@ -95,22 +110,45 @@ def clean_photo_str(photo_str):
     return ''
 
 
-def get_storm_drain_status(questions, answers):
-    index = 0
-    for question in questions:
-        if question.startswith(u'Does it contain stagnant water') or question.startswith(
-                u'Contiene agua estancada') or question.startswith(u'Cont\xe9 aigua estancada') or \
-                question.startswith(u'Does it have stagnant water') or question.startswith(
-            u'\xbfContiene agua estancada') or question.startswith(u'Cont\xe9 aigua estancada'):
-            if answers[index].startswith(u'Yes') or answers[index].startswith(u'S\xed') or answers[index].startswith(
-                    u'Has stagnant water') or answers[index].startswith(u'Hay agua') or answers[index].startswith(
-                    u'Hi ha aigua'):
-                return 'storm_drain_water'
-            elif answers[index].startswith(u'No') or answers[index].startswith(u'Does not'):
-                return 'storm_drain_dry'
-            else:
-                return 'other'
-        index = index + 1
+# 1
+# "question": "Is it a storm drain or other type of breeding site?","question_id": 12
+# "answer": "Storm drain", "answer_id": 121
+# "answer": "Other breeding sites", "answer_id": 122
+
+# 2
+# "question": "Does it have water?", "question_id": 8
+# "answer": "Yes", "answer_id": 101
+# "answer": "No", "answer_id": 81
+def get_storm_drain_status(report_responses):
+    is_storm_drain = False
+    water = False
+    questions_have_id = False
+    for report_response in report_responses:
+        question_id = report_response.get('question_id',None)
+        answer_id = report_response.get('question_id', None)
+        if question_id is not None and answer_id is not None:
+            questions_have_id = True
+            if question_id == 12 and answer_id == 121:
+                    is_storm_drain = True
+            elif question_id == 8 and answer_id == 101:
+                water = True
+        else:
+            question = report_response['question']
+            answer = report_response['answer']
+            if question.startswith(u'Does it contain stagnant water') or question.startswith(u'Contiene agua estancada') or question.startswith(u'Cont\xe9 aigua estancada') or question.startswith(u'Does it have stagnant water') or question.startswith(u'\xbfContiene agua estancada') or question.startswith(u'Cont\xe9 aigua estancada'):
+                if answer.startswith(u'Yes') or answer.startswith(u'S\xed') or answer.startswith(u'Has stagnant water') or answer.startswith(u'Hay agua') or answer.startswith(u'Hi ha aigua'):
+                    return 'storm_drain_water'
+                elif answer.startswith(u'No') or answer.startswith(u'Does not'):
+                    return 'storm_drain_dry'
+                else:
+                    return 'other'
+    if questions_have_id:
+        if is_storm_drain and water:
+            return 'storm_drain_water'
+        elif is_storm_drain and not water:
+            return 'storm_drain_dry'
+        else:
+            return 'other'
     return 'other'
 
 
@@ -125,23 +163,21 @@ filenames = []
 # #####################################################################################################
 # This block should only be uncommented running the script locally and with pregenerated map data files
 # #####################################################################################################
-'''
+
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2014.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2015.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2016.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2017.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2018.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2019.json")
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2020.json")
 filenames.append("/tmp/hidden_reports2014.json")
 filenames.append("/tmp/hidden_reports2015.json")
 filenames.append("/tmp/hidden_reports2016.json")
 filenames.append("/tmp/hidden_reports2017.json")
 filenames.append("/tmp/hidden_reports2018.json")
 filenames.append("/tmp/hidden_reports2019.json")
-filenames.append("/tmp/hidden_reports2020.json")
-'''
 
+'''
 r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
 if r.status_code == 200:
     file = "/tmp/cfa.json"
@@ -195,12 +231,11 @@ if r.status_code == 200:
     text_file.close()
 else:
     print ('Warning: coverage month response status code is ' + str(r.status_code))
-
+'''
 
 conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params['db_name'] + "' user='" + \
               config.params['db_user'] + "' password='" + config.params['db_password'] + "' port='" + \
               config.params['db_port'] + "'"
-
 print ("Connecting to database")
 conn = psycopg2.connect(conn_string)
 cursor = conn.cursor()
@@ -218,9 +253,61 @@ cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid
                "s_q_1 character varying(255), s_q_2 character varying(255), s_q_3 character varying(255), s_q_4 character varying(255)," \
                "s_a_1 character varying(255), s_a_2 character varying(255), s_a_3 character varying(255), s_a_4 character varying(255)," \
                "user_id character varying(36)," \
-               "municipality character varying(100)" \
+               "municipality character varying(100)," \
+               "responses_json character varying(4000)," \
+               "tags character varying(4000)" \
                ");")
 conn.commit()
+
+# breeding site report - questions and answers
+
+# 1
+# "question": "Is it a storm drain or other type of breeding site?","question_id": 12
+# "answer": "Storm drain", "answer_id": 121
+# "answer": "Other breeding sites", "answer_id": 122
+
+# 2
+# "question": "Does it have water?", "question_id": 8
+# "answer": "Yes", "answer_id": 101
+# "answer": "No", "answer_id": 81
+
+# mosquito report - questions and answers
+
+# 1
+# "question": "What kind of mosquito do you think it is?", "question_id": 6
+# "answer": "Invasive Aedes", "answer_id": 61
+# "answer": "Common mosquito", "answer_id": 62
+# "answer": "Other", "answer_id": 63
+
+# 2
+# "question": "How does your mosquito look?", "question_id": 7
+# "answer": "Thorax 1", "answer_id": 711
+# "answer": "Thorax 2", "answer_id": 712
+# "answer": "Thorax 3", "answer_id": 713
+# "answer": "Thorax 4", "answer_id": 714
+# "answer": "Abdomen 1", "answer_id": 721
+# "answer": "Abdomen 2", "answer_id": 722
+# "answer": "Abdomen 3", "answer_id": 723
+# "answer": "Abdomen 4", "answer_id": 724
+# "answer": "3d leg 1", "answer_id": 731
+# "answer": "3d leg 2", "answer_id": 732
+# "answer": "3d leg 3", "answer_id": 733
+# "answer": "3d leg 4", "answer_id": 734
+
+# key - slug / value - old category
+class_translation_table = {
+    'other-species': 'other_species',
+    'aedes-albopictus' : 'albopictus',
+    'aedes-aegypti': 'aegypti',
+    'aedes-japonicus': 'japonicus',
+    'aedes-koreicus': 'koreicus',
+    'japonicus-koreicus':'japonicus_koreicus',
+    'albopictus-cretinus':'albopictus_cretinus',
+    'not-sure': 'not_sure',
+    'unclassified': 'unclassified',
+    'culex-sp': 'culex',
+    'conflict': 'conflict'
+}
 
 # for year in range(2014, this_year+1):
 for file in filenames:
@@ -262,67 +349,76 @@ for file in filenames:
                 site_answers[index_s] = bit['site_responses_text'][key]
                 index_s = index_s + 1
 
+        responses_json = bit['responses']
+
         validated = False
-        if bit['movelab_annotation'] != None and bit['movelab_annotation'] and bit['movelab_annotation'] != 'None' and \
-                        bit['movelab_annotation'] != '':
+        if bit['movelab_annotation_euro'] != None and bit['movelab_annotation_euro'] and bit['movelab_annotation_euro'] != 'None' and bit['movelab_annotation_euro'] != '':
             validated = True
             if bit['type'] == 'adult':
                 if file.find("2014") >= 0:
-                    if bit['movelab_annotation']['tiger_certainty_category'] != None and bit['movelab_annotation'][
-                        'tiger_certainty_category'] and bit['movelab_annotation'][
-                        'tiger_certainty_category'] != 'None' and bit['movelab_annotation'][
-                        'tiger_certainty_category'] != '':
-                        if bit['movelab_annotation']['tiger_certainty_category'] <= 0:
-                            expert_validation_result = 'none#' + str(
-                                bit['movelab_annotation']['tiger_certainty_category'])
+                    tiger_certainty_category = bit['movelab_annotation_euro'].get('tiger_certainty_category', 'not_value')
+                    if tiger_certainty_category == 'not_value':
+                        class_id = bit['movelab_annotation_euro'].get('class_id','-99')
+                        if class_id == '99':
+                            class_label = bit['movelab_annotation_euro'].get('class_label','no_label')
+                            if class_label == 'no_label':
+                                validated = False
+                                expert_validation_result = 'unclassified#0'
+                            elif class_label == 'conflict':
+                                expert_validation_result = 'conflict#0'
                         else:
-                            expert_validation_result = 'albopictus#' + str(
-                                bit['movelab_annotation']['tiger_certainty_category'])
+                            if class_id in [4,5,6,7,10]:
+                                expert_validation_result = class_translation_table[bit['movelab_annotation_euro']['class_label']] + '#' + str(bit['movelab_annotation_euro']['class_value'])
+                            else:
+                                expert_validation_result = class_translation_table[bit['movelab_annotation_euro']['class_label']] + '#0'
                     else:
-                        validated = False
-                        expert_validation_result = 'none#none'
-
-                    try:
-                        if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation'][
-                            'photo_html'] and bit['movelab_annotation']['photo_html'] != 'None' and \
-                                        bit['movelab_annotation']['photo_html'] != '':
-                            photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
-                    except KeyError:
-                        pass
-                else:
-                    if bit['movelab_annotation']['classification'] and bit['movelab_annotation'][
-                        'classification'] != 'None' and bit['movelab_annotation']['classification'] != '':
-                        if bit['movelab_annotation']['classification'] == 'albopictus':
-                            expert_validation_result = bit['movelab_annotation']['classification'] + '#' + str(
-                                bit['movelab_annotation']['tiger_certainty_category'])
-                        elif bit['movelab_annotation']['classification'] == 'aegypti':
-                            expert_validation_result = bit['movelab_annotation']['classification'] + '#' + str(
-                                bit['movelab_annotation']['aegypti_certainty_category'])
+                        if bit['movelab_annotation_euro']['tiger_certainty_category'] != None and bit['movelab_annotation_euro']['tiger_certainty_category'] and bit['movelab_annotation_euro']['tiger_certainty_category'] != 'None' and bit['movelab_annotation_euro']['tiger_certainty_category'] != '':
+                            if bit['movelab_annotation_euro']['tiger_certainty_category'] <= 0:
+                                if bit['movelab_annotation_euro']['tiger_certainty_category'] < 0:
+                                    expert_validation_result = 'other_species#0'
+                                else:
+                                    expert_validation_result = 'not_sure#0'
+                            else:
+                                expert_validation_result = 'albopictus#' + str(bit['movelab_annotation_euro']['tiger_certainty_category'])
                         else:
-                            expert_validation_result = bit['movelab_annotation']['classification'] + '#' + str(
-                                bit['movelab_annotation']['score'])
+                            validated = False
+                            expert_validation_result = 'unclassified#0'
+                else:
+                    class_id = bit['movelab_annotation_euro'].get('class_id', '-99')
+                    if class_id == '-99':
+                        class_label = bit['movelab_annotation_euro'].get('class_label', 'no_label')
+                        if class_label == 'no_label':
+                            validated = False
+                            expert_validation_result = 'unclassified#0'
+                        elif class_label == 'conflict':
+                            expert_validation_result = 'conflict#0'
+                    else:
+                        if bit['movelab_annotation_euro']['class_value'] is None:
+                            expert_validation_result = class_translation_table[bit['movelab_annotation_euro']['class_label']] + '#0'
+                        else:
+                            expert_validation_result = class_translation_table[bit['movelab_annotation_euro']['class_label']] + '#' + str(bit['movelab_annotation_euro']['class_value'])
+                    '''
                     try:
-                        if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation'][
-                            'photo_html'] and bit['movelab_annotation']['photo_html'] != 'None' and \
-                                        bit['movelab_annotation']['photo_html'] != '':
-                            photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
-                    except KeyError:
-                        pass
+                        expert_validation_result = bit['movelab_annotation_euro']['class_label'] + '#' + str(bit['movelab_annotation_euro']['class_value'])
+                    except KeyError as e:
+                        print(bit['movelab_annotation_euro'])
+                        print(e)
+                    '''
             elif bit['type'] == 'site':
-                expert_validation_result = 'site#' + str(bit['movelab_annotation']['site_certainty_category'])
+                expert_validation_result = 'site#' + str(bit['movelab_annotation_euro']['site_certainty_category'])
                 try:
-                    if bit['movelab_annotation']['photo_html'] != None and bit['movelab_annotation']['photo_html'] and \
-                                    bit['movelab_annotation']['photo_html'] != 'None' and bit['movelab_annotation'][
-                        'photo_html'] != '':
-                        photo_html_str = clean_photo_str(bit['movelab_annotation']['photo_html'])
+                    if bit['movelab_annotation_euro']['photo_html'] != None and bit['movelab_annotation_euro']['photo_html'] and bit['movelab_annotation_euro']['photo_html'] != 'None' and bit['movelab_annotation_euro']['photo_html'] != '':
+                        photo_html_str = clean_photo_str(bit['movelab_annotation_euro']['photo_html'])
                 except KeyError:
                     pass
+            elif bit['type'] == 'bite':
+                expert_validation_result = 'bite#0'
             else:
                 pass
-            if bit['movelab_annotation']['edited_user_notes'] != None and bit['movelab_annotation'][
-                'edited_user_notes'] and bit['movelab_annotation']['edited_user_notes'] != 'None' and \
-                            bit['movelab_annotation']['edited_user_notes'] != '':
+
+            if bit['movelab_annotation']['edited_user_notes'] != None and bit['movelab_annotation']['edited_user_notes'] and bit['movelab_annotation']['edited_user_notes'] != 'None' and bit['movelab_annotation']['edited_user_notes'] != '':
                 edited_user_notes = bit['movelab_annotation']['edited_user_notes']
+
         if bit['site_responses'] and bit['site_responses'] != 'None' and bit['site_responses'] != '':
             try:
                 site_responses_str = str(bit['site_responses']['q1_response']) + '#' + str(
@@ -345,29 +441,23 @@ for file in filenames:
                 tiger_responses_str = "0#0#" + str(bit['tiger_responses']['q3_response'])
 
         if expert_validation_result != '':
-            if expert_validation_result == 'albopictus#1' or expert_validation_result == 'albopictus#2':
-                simplified_expert_validation_result = 'albopictus'
-            elif expert_validation_result == 'aegypti#1' or expert_validation_result == 'aegypti#2':
-                simplified_expert_validation_result = 'aegypti'
-            elif expert_validation_result == 'albopictus#-1' or expert_validation_result == 'albopictus#-2' or expert_validation_result == 'aegypti#-1' or expert_validation_result == 'aegypti#-2' or expert_validation_result == 'none#-1' or expert_validation_result == 'none#-2':
+            expert_validation_prefix = expert_validation_result.split('#')[0]
+            if expert_validation_prefix in ['albopictus','aegypti','japonicus','koreicus','japonicus-koreicus','albopictus-cretinus','culex','site','bite']:
+                simplified_expert_validation_result = expert_validation_prefix
+            elif expert_validation_prefix == 'other_species':
                 simplified_expert_validation_result = 'noseparece'
-            elif expert_validation_result == 'albopictus#0' or expert_validation_result == 'aegypti#0' or expert_validation_result == 'none#0' or expert_validation_result == 'none#none':
+            elif expert_validation_prefix in ['not_sure', 'unclassified']:
                 simplified_expert_validation_result = 'nosesabe'
-            elif expert_validation_result.startswith('site#'):
-                simplified_expert_validation_result = 'site'
+            elif expert_validation_prefix == 'conflict':
+                simplified_expert_validation_result = 'conflict'
 
         if simplified_expert_validation_result != '' and simplified_expert_validation_result == 'site':
             if bit['site_cat'] != 0:
                 storm_drain_status = 'other'
                 simplified_expert_validation_result = simplified_expert_validation_result + "#" + storm_drain_status
             else:
-                # if site_responses_str == '':
-                #     storm_drain_status = 'other'                    
-                #     simplified_expert_validation_result = simplified_expert_validation_result + "#" + storm_drain_status
-                # else:
-                #     site_responses_l = site_responses_str.split('#')                    
-                if bit['site_responses_text'] is not None:
-                    storm_drain_status = get_storm_drain_status(site_questions, site_answers)
+                if len(responses_json) > 0:
+                    storm_drain_status = get_storm_drain_status(responses_json)
                 else:
                     storm_drain_status = 'other'
 
@@ -377,43 +467,66 @@ for file in filenames:
         if bit['latest_version'] == True:
             try:
                 cursor.execute(
-                    """INSERT INTO map_aux_reports(version_uuid, observation_date,lon,lat,ref_system,type,breeding_site_answers,mosquito_answers,expert_validated,expert_validation_result,simplified_expert_validation_result,site_cat,storm_drain_status,edited_user_notes,photo_url,single_report_map_url,n_photos,visible,final_expert_status,t_q_1, t_q_2, t_q_3, t_a_1, t_a_2, t_a_3, s_q_1, s_q_2, s_q_3, s_q_4, s_a_1, s_a_2, s_a_3, s_a_4) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
+                    """INSERT INTO map_aux_reports(version_uuid, observation_date,lon,lat,ref_system,type,breeding_site_answers,mosquito_answers,expert_validated,expert_validation_result,simplified_expert_validation_result,site_cat,storm_drain_status,edited_user_notes,photo_url,single_report_map_url,n_photos,visible,final_expert_status,t_q_1, t_q_2, t_q_3, t_a_1, t_a_2, t_a_3, s_q_1, s_q_2, s_q_3, s_q_4, s_a_1, s_a_2, s_a_3, s_a_4, responses_json) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);""",
                     (bit['version_UUID'], creation_date, bit['lon'], bit['lat'], 'WGS84', bit['type'], site_responses_str,
                      tiger_responses_str, validated, expert_validation_result, simplified_expert_validation_result,
                      bit['site_cat'], storm_drain_status, edited_user_notes, photo_html_str, single_report_map_url,
                      bit['n_photos'], bit['visible'], bit['final_expert_status_text'], tiger_questions[0],
                      tiger_questions[1], tiger_questions[2], tiger_answers[0], tiger_answers[1], tiger_answers[2],
                      site_questions[0], site_questions[1], site_questions[2], site_questions[3], site_answers[0],
-                     site_answers[1], site_answers[2], site_answers[3]))
+                     site_answers[1], site_answers[2], site_answers[3], json.dumps(responses_json)))
                 note = get_nota_usuari_de_report(cursor, bit['version_UUID'])
                 actualitza_nota_usuari(cursor, bit['version_UUID'], note)
                 conn.commit()
             except:
                 conn.rollback()
 
-'''
-print "Removing duplicates"
-cursor.execute(
-    """DELETE FROM map_aux_reports WHERE id IN (SELECT id FROM (SELECT id,ROW_NUMBER() OVER (partition BY version_uuid,observation_date,lon,lat,ref_system,type,breeding_site_answers,mosquito_answers,expert_validated,expert_validation_result,simplified_expert_validation_result,site_cat,storm_drain_status,edited_user_notes,photo_url,photo_license,dataset_license,single_report_map_url,n_photos,visible,final_expert_status,note,private_webmap_layer,t_q_1,t_q_2,t_q_3,t_a_1,t_a_2,t_a_3,s_q_1,s_q_2,s_q_3,s_q_4,s_a_1,s_a_2,s_a_3,s_a_4 ORDER BY id) AS rnum FROM map_aux_reports) t WHERE t.rnum > 1);""")
-'''
 
 print ("Updating database")
 # special points -> site#-4 are auto validated
 cursor.execute(
     """UPDATE map_aux_reports set expert_validation_result = 'site#-4' where version_uuid in (select report_id from tigacrafting_expertreportannotation where site_certainty_notes='auto');""")
 # end of special classification for 2014 sites
+
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='conflict' where expert_validation_result='conflict#0';""")
+
 cursor.execute(
     """UPDATE map_aux_reports set private_webmap_layer='mosquito_tiger_confirmed' where type='adult' and expert_validated=True and expert_validation_result='albopictus#2' and n_photos > 0 and final_expert_status=1;""")
 cursor.execute(
     """UPDATE map_aux_reports set private_webmap_layer='mosquito_tiger_probable' where type='adult' and expert_validated=True and expert_validation_result='albopictus#1' and n_photos > 0 and final_expert_status=1;""")
+
 cursor.execute(
     """UPDATE map_aux_reports set private_webmap_layer='yellow_fever_confirmed' where type='adult' and expert_validated=True and expert_validation_result='aegypti#2' and n_photos > 0 and final_expert_status=1;""")
 cursor.execute(
     """UPDATE map_aux_reports set private_webmap_layer='yellow_fever_probable' where type='adult' and expert_validated=True and expert_validation_result='aegypti#1' and n_photos > 0 and final_expert_status=1;""")
+
 cursor.execute(
-    """UPDATE map_aux_reports set private_webmap_layer='other_species' where type='adult' and expert_validated=True and (expert_validation_result='none#-1' or expert_validation_result='none#-2') and n_photos > 0 and final_expert_status=1;""")
+    """UPDATE map_aux_reports set private_webmap_layer='japonicus_confirmed' where type='adult' and expert_validated=True and expert_validation_result='japonicus#2' and n_photos > 0 and final_expert_status=1;""")
 cursor.execute(
-    """UPDATE map_aux_reports set private_webmap_layer='unidentified' where (type='adult' and n_photos = 0) or (type='adult' and expert_validated=True and expert_validation_result='none#0' and n_photos > 0 and final_expert_status=1) or (type='adult' and expert_validated=False and expert_validation_result='none#none' and n_photos > 0 and final_expert_status=1);""")
+    """UPDATE map_aux_reports set private_webmap_layer='japonicus_probable' where type='adult' and expert_validated=True and expert_validation_result='japonicus#1' and n_photos > 0 and final_expert_status=1;""")
+
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='koreicus_confirmed' where type='adult' and expert_validated=True and expert_validation_result='koreicus#2' and n_photos > 0 and final_expert_status=1;""")
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='koreicus_probable' where type='adult' and expert_validated=True and expert_validation_result='koreicus#1' and n_photos > 0 and final_expert_status=1;""")
+
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='culex_confirmed' where type='adult' and expert_validated=True and expert_validation_result='culex#2' and n_photos > 0 and final_expert_status=1;""")
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='culex_probable' where type='adult' and expert_validated=True and expert_validation_result='culex#1' and n_photos > 0 and final_expert_status=1;""")
+
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='japonicus_koreicus' where type='adult' and expert_validated=True and expert_validation_result='japonicus-koreicus#0' and n_photos > 0 and final_expert_status=1;""")
+
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='albopictus_cretinus' where type='adult' and expert_validated=True and expert_validation_result='albopictus-cretinus#0' and n_photos > 0 and final_expert_status=1;""")
+
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='other_species' where type='adult' and expert_validated=True and (expert_validation_result='other_species#0') and n_photos > 0 and final_expert_status=1;""")
+cursor.execute(
+    """UPDATE map_aux_reports set private_webmap_layer='unidentified' where (type='adult' and n_photos = 0) or (type='adult' and expert_validated=True and expert_validation_result='not_sure#0' and n_photos > 0 and final_expert_status=1) or (type='adult' and expert_validated=False and expert_validation_result='none#none' and n_photos > 0 and final_expert_status=1);""")
+
 cursor.execute(
     """UPDATE map_aux_reports set private_webmap_layer='storm_drain_water' where type='site' and expert_validated=True and ( expert_validation_result='site#1' or expert_validation_result='site#2' or expert_validation_result='site#-4') and storm_drain_status='storm_drain_water'  and final_expert_status=1;""")
 cursor.execute(
@@ -424,10 +537,12 @@ cursor.execute(
 cursor.execute(
     """UPDATE map_aux_reports set private_webmap_layer='breeding_site_not_yet_filtered' where type='site' and expert_validated=False;""")
 cursor.execute(
-    """UPDATE map_aux_reports set private_webmap_layer='trash_layer' where ( visible = False and final_expert_status<>0 ) or (expert_validated = True and (expert_validation_result='none#-3' or expert_validation_result='site#-3' or expert_validation_result='site#0' or expert_validation_result='none#none') and (final_expert_status = 1 or final_expert_status = -1)) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 0) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 1);""")
+    """UPDATE map_aux_reports set private_webmap_layer='trash_layer' where ( visible = False and final_expert_status<>0 ) or (expert_validated = True and (expert_validation_result='none#-3' or expert_validation_result='site#-3' or expert_validation_result='site#0' or expert_validation_result='none#none' or expert_validation_result='unclassified#0') and (final_expert_status = 1 or final_expert_status = -1)) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 0) or (type='site' and expert_validated=True and (expert_validation_result='site#-2' or expert_validation_result='site#-1') and final_expert_status = 1);""")
 # visible set to false - if the reports have'nt been validated they won't be visible
+# cursor.execute(
+#    """UPDATE map_aux_reports set private_webmap_layer='not_yet_validated' where type='adult' and expert_validated=False and n_photos > 0 and visible=False;""")
 cursor.execute(
-    """UPDATE map_aux_reports set private_webmap_layer='not_yet_validated' where type='adult' and expert_validated=False and n_photos > 0 and visible=False;""")
+    """UPDATE map_aux_reports set private_webmap_layer='not_yet_validated' where type='adult' and expert_validated=False and n_photos > 0;""")
 
 # Move site#0 to breeding_site_other
 cursor.execute(
@@ -475,9 +590,12 @@ update_user_uuids(cursor)
 print ("Updating municipalities")
 update_municipalities(cursor)
 
+print ("Updating tags")
+update_tags(cursor)
+
 # regenerate map view (drop table destroys it)
 print ("Regenerating views")
-#cursor.execute("""CREATE MATERIALIZED VIEW reports_map_data AS WITH validated_data AS (SELECT map_aux_reports.private_webmap_layer AS category,map_aux_reports.id,map_aux_reports.observation_date,map_aux_reports.lat,map_aux_reports.lon,map_aux_reports.expert_validation_result FROM map_aux_reports WHERE map_aux_reports.final_expert_status <> 0 AND map_aux_reports.lon IS NOT NULL AND map_aux_reports.lat IS NOT NULL AND map_aux_reports.lat <> (-1)::double precision AND map_aux_reports.lon <> (-1)::double precision) SELECT foo2.id,foo2.c,foo2.expert_validation_result,foo2.category,foo2.month,st_x(foo2.geom) AS lon,st_y(foo2.geom) AS lat,2 AS geohashlevel,st_setsrid(foo2.geom, 4326) AS geom FROM ( SELECT count(*) AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 2))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 2), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo2 UNION SELECT foo3.id,foo3.c,foo3.expert_validation_result,foo3.category,foo3.month,st_x(foo3.geom) AS lon,st_y(foo3.geom) AS lat,3 AS geohashlevel,st_setsrid(foo3.geom, 4326) AS geom FROM ( SELECT count(*) AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 3))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 3), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo3 UNION SELECT foo4.id,foo4.c,foo4.expert_validation_result,foo4.category,foo4.month,st_x(foo4.geom) AS lon,st_y(foo4.geom) AS lat,4 AS geohashlevel,st_setsrid(foo4.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category, validated_data.expert_validation_result, to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 4))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 4), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo4 UNION SELECT foo5.id,foo5.c,foo5.expert_validation_result,foo5.category,foo5.month,st_x(foo5.geom) AS lon,st_y(foo5.geom) AS lat,5 AS geohashlevel,st_setsrid(foo5.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 5))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 5), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo5 UNION SELECT foo7.id, foo7.c,foo7.expert_validation_result,foo7.category,foo7.month,st_x(foo7.geom) AS lon,st_y(foo7.geom) AS lat,7 AS geohashlevel,st_setsrid(foo7.geom, 4326) AS geom FROM ( SELECT count(*) AS c, validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month, CASE WHEN count(*)::integer = 1 THEN st_setsrid(st_makepoint(min(validated_data.lon), min(validated_data.lat)), 4326) ELSE st_centroid(st_geomfromgeohash(st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 7))) END AS geom, CASE WHEN count(*)::integer = 1 THEN string_agg(validated_data.id::character varying::text, ','::text)::integer ELSE NULL::integer END AS id FROM validated_data GROUP BY validated_data.category, st_geohash(st_setsrid(st_makepoint(validated_data.lon, validated_data.lat), 4326), 7), to_char(validated_data.observation_date, 'YYYYMM'::text), validated_data.expert_validation_result) foo7 UNION SELECT foo8.id,foo8.c,foo8.expert_validation_result,foo8.category,foo8.month,foo8.lon,foo8.lat,8 AS geohashlevel,st_setsrid(st_makepoint(foo8.lon, foo8.lat), 4326) AS geom FROM ( SELECT 1 AS c,validated_data.category,validated_data.expert_validation_result,to_char(validated_data.observation_date, 'YYYYMM'::text) AS month,validated_data.lon,validated_data.lat,validated_data.id FROM validated_data) foo8 ORDER BY 7 WITH DATA;""")
+
 cursor.execute("""
 CREATE MATERIALIZED VIEW public.reports_map_data AS 
  WITH validated_data AS (
