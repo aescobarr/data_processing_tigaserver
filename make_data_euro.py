@@ -163,21 +163,23 @@ filenames = []
 # #####################################################################################################
 # This block should only be uncommented running the script locally and with pregenerated map data files
 # #####################################################################################################
-
+'''
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2014.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2015.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2016.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2017.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2018.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2019.json")
+filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2020.json")
 filenames.append("/tmp/hidden_reports2014.json")
 filenames.append("/tmp/hidden_reports2015.json")
 filenames.append("/tmp/hidden_reports2016.json")
 filenames.append("/tmp/hidden_reports2017.json")
 filenames.append("/tmp/hidden_reports2018.json")
 filenames.append("/tmp/hidden_reports2019.json")
-
+filenames.append("/tmp/hidden_reports2020.json")
 '''
+
 r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
 if r.status_code == 200:
     file = "/tmp/cfa.json"
@@ -194,19 +196,42 @@ if r.status_code == 200:
     text_file.close()
     print ('Coarse filter sites complete')
 
+
+# for year in range(2014, this_year + 1):
+#     print (str(year))
+#     r = requests.get("http://" + config.params['server_url'] + "/api/all_reports/?format=json" + "&year=" + str(year),
+#                      headers=headers)
+#     if r.status_code == 200:
+#         file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
+#         text_file = open(file, "w")
+#         text_file.write(r.text)
+#         text_file.close()
+#         print (str(year) + ' complete')
+#         filenames.append(file)
+#     else:
+#         print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+
+# experimental paginated endpoint
 for year in range(2014, this_year + 1):
     print (str(year))
-    r = requests.get("http://" + config.params['server_url'] + "/api/all_reports/?format=json" + "&year=" + str(year),
-                     headers=headers)
-    if r.status_code == 200:
-        file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
-        text_file = open(file, "w")
-        text_file.write(r.text)
-        text_file.close()
-        print (str(year) + ' complete')
-        filenames.append(file)
-    else:
+    next_url = "http://" + config.params['server_url'] + "/api/all_reports_paginated/?format=json&page_size=500" + "&year=" + str(year)
+    accumulated_results = []
+    i = 1
+    while(next_url is not None):
+      print("Working on {0}, page {1}".format(str(year),str(i)))
+      r = requests.get(next_url, headers=headers)
+      if r.status_code == 200:
+        current_data = json.loads(r.text)
+        accumulated_results = accumulated_results + current_data['results']
+        next_url = current_data['next']
+        i = i + 1
+      else:
         print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+    file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
+    text_file = open(file, "w")
+    text_file.write(json.dumps(accumulated_results))
+    text_file.close()
+
 
 for year in range(2014, this_year + 1):
     print (str(year))
@@ -231,7 +256,7 @@ if r.status_code == 200:
     text_file.close()
 else:
     print ('Warning: coverage month response status code is ' + str(r.status_code))
-'''
+
 
 conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params['db_name'] + "' user='" + \
               config.params['db_user'] + "' password='" + config.params['db_password'] + "' port='" + \
@@ -383,6 +408,13 @@ for file in filenames:
                         else:
                             validated = False
                             expert_validation_result = 'unclassified#0'
+                    try:
+                        if bit['movelab_annotation_euro']['photo_html'] != None and bit['movelab_annotation_euro'][
+                            'photo_html'] and bit['movelab_annotation_euro']['photo_html'] != 'None' and \
+                                bit['movelab_annotation_euro']['photo_html'] != '':
+                            photo_html_str = clean_photo_str(bit['movelab_annotation_euro']['photo_html'])
+                    except KeyError:
+                        pass
                 else:
                     class_id = bit['movelab_annotation_euro'].get('class_id', '-99')
                     if class_id == '-99':
@@ -397,6 +429,13 @@ for file in filenames:
                             expert_validation_result = class_translation_table[bit['movelab_annotation_euro']['class_label']] + '#0'
                         else:
                             expert_validation_result = class_translation_table[bit['movelab_annotation_euro']['class_label']] + '#' + str(bit['movelab_annotation_euro']['class_value'])
+                    try:
+                        if bit['movelab_annotation_euro']['photo_html'] != None and bit['movelab_annotation_euro'][
+                            'photo_html'] and bit['movelab_annotation_euro']['photo_html'] != 'None' and \
+                                bit['movelab_annotation_euro']['photo_html'] != '':
+                            photo_html_str = clean_photo_str(bit['movelab_annotation_euro']['photo_html'])
+                    except KeyError:
+                        pass
                     '''
                     try:
                         expert_validation_result = bit['movelab_annotation_euro']['class_label'] + '#' + str(bit['movelab_annotation_euro']['class_value'])

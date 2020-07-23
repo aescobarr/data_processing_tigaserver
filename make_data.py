@@ -158,6 +158,7 @@ if r.status_code == 200:
     text_file.close()
     print ('Coarse filter sites complete')
 
+'''
 for year in range(2014, this_year + 1):
     print (str(year))
     r = requests.get("http://" + config.params['server_url'] + "/api/all_reports/?format=json" + "&year=" + str(year),
@@ -171,6 +172,27 @@ for year in range(2014, this_year + 1):
         filenames.append(file)
     else:
         print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+'''
+# experimental paginated endpoint
+for year in range(2014, this_year + 1):
+    print (str(year))
+    next_url = "http://" + config.params['server_url'] + "/api/all_reports_paginated/?format=json&page_size=500" + "&year=" + str(year)
+    accumulated_results = []
+    i = 1
+    while(next_url is not None):
+      print("Working on {0}, page {1}".format(str(year),str(i)))
+      r = requests.get(next_url, headers=headers)
+      if r.status_code == 200:
+        current_data = json.loads(r.text)
+        accumulated_results = accumulated_results + current_data['results']
+        next_url = current_data['next']
+        i = i + 1
+      else:
+        print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+    file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
+    text_file = open(file, "w")
+    text_file.write(json.dumps(accumulated_results))
+    text_file.close()
 
 for year in range(2014, this_year + 1):
     print (str(year))
