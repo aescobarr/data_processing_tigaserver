@@ -94,7 +94,7 @@ new_reports_unfiltered_sites = filter_reports(new_reports_unfiltered_sites, Fals
 
 fast_track = load_fast_track_ids()
 
-if len(new_reports_unfiltered_sites) == 0:
+if len(list(new_reports_unfiltered_sites)) == 0:
     logging.info("No site reports to validate")
 
 for report in new_reports_unfiltered_sites:
