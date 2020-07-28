@@ -244,8 +244,8 @@ cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid
                ");")
 conn.commit()
 
-# for year in range(2014, this_year+1):
-for file in filenames:
+for year in range(2014, this_year+1):
+# for file in filenames:
     print ("Writing file %s  to database" % file)
     json_data = open(file)
     data = json.load(json_data)
