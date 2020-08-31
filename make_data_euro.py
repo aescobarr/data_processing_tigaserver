@@ -163,7 +163,7 @@ filenames = []
 # #####################################################################################################
 # This block should only be uncommented running the script locally and with pregenerated map data files
 # #####################################################################################################
-'''
+
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2014.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2015.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2016.json")
@@ -178,7 +178,7 @@ filenames.append("/tmp/hidden_reports2017.json")
 filenames.append("/tmp/hidden_reports2018.json")
 filenames.append("/tmp/hidden_reports2019.json")
 filenames.append("/tmp/hidden_reports2020.json")
-'''
+
 
 r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
 if r.status_code == 200:
@@ -210,6 +210,7 @@ if r.status_code == 200:
 #         filenames.append(file)
 #     else:
 #         print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+
 
 # experimental paginated endpoint
 for year in range(2014, this_year + 1):
@@ -331,7 +332,8 @@ class_translation_table = {
     'not-sure': 'not_sure',
     'unclassified': 'unclassified',
     'culex-sp': 'culex',
-    'conflict': 'conflict'
+    'conflict': 'conflict',
+    'complex': 'complex'
 }
 
 # for year in range(2014, this_year+1):
