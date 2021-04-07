@@ -171,6 +171,7 @@ filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2017.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2018.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2019.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2020.json")
+filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2021.json")
 filenames.append("/tmp/hidden_reports2014.json")
 filenames.append("/tmp/hidden_reports2015.json")
 filenames.append("/tmp/hidden_reports2016.json")
@@ -178,6 +179,7 @@ filenames.append("/tmp/hidden_reports2017.json")
 filenames.append("/tmp/hidden_reports2018.json")
 filenames.append("/tmp/hidden_reports2019.json")
 filenames.append("/tmp/hidden_reports2020.json")
+filenames.append("/tmp/hidden_reports2021.json")
 
 
 r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
@@ -195,21 +197,6 @@ if r.status_code == 200:
     text_file.write(r.text)
     text_file.close()
     print ('Coarse filter sites complete')
-
-
-# for year in range(2014, this_year + 1):
-#     print (str(year))
-#     r = requests.get("http://" + config.params['server_url'] + "/api/all_reports/?format=json" + "&year=" + str(year),
-#                      headers=headers)
-#     if r.status_code == 200:
-#         file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
-#         text_file = open(file, "w")
-#         text_file.write(r.text)
-#         text_file.close()
-#         print (str(year) + ' complete')
-#         filenames.append(file)
-#     else:
-#         print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
 
 
 # experimental paginated endpoint
@@ -336,7 +323,7 @@ class_translation_table = {
     'complex': 'complex'
 }
 
-# for year in range(2014, this_year+1):
+#for year in range(2014, this_year+1):
 for file in filenames:
     print ("Writing file %s  to database" % file)
     json_data = open(file)
