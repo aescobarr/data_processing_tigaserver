@@ -7,6 +7,7 @@ from datetime import datetime
 import config
 import psycopg2
 from django.utils.dateparse import parse_datetime
+from threading import Thread
 
 
 def update_municipalities(cursor):
@@ -151,6 +152,26 @@ def get_storm_drain_status(report_responses):
             return 'other'
     return 'other'
 
+def download_year_data(year):
+    print(str(year))
+    next_url = "http://" + config.params[
+        'server_url'] + "/api/all_reports_paginated/?format=json&page_size=100" + "&year=" + str(year)
+    accumulated_results = []
+    i = 1
+    while (next_url is not None):
+        print("Working on {0}, page {1}".format(str(year), str(i)))
+        r = requests.get(next_url, headers=headers)
+        if r.status_code == 200:
+            current_data = json.loads(r.text)
+            accumulated_results = accumulated_results + current_data['results']
+            next_url = current_data['next']
+            i = i + 1
+        else:
+            print('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+    file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
+    text_file = open(file, "w")
+    text_file.write(json.dumps(accumulated_results))
+    text_file.close()
 
 this_year = datetime.now().year
 
@@ -200,26 +221,35 @@ if r.status_code == 200:
 
 
 # experimental paginated endpoint
+threads = []
+# spin a thread for each year
 for year in range(2014, this_year + 1):
-    print (str(year))
-    next_url = "http://" + config.params['server_url'] + "/api/all_reports_paginated/?format=json&page_size=500" + "&year=" + str(year)
-    accumulated_results = []
-    i = 1
-    while(next_url is not None):
-      print("Working on {0}, page {1}".format(str(year),str(i)))
-      r = requests.get(next_url, headers=headers)
-      if r.status_code == 200:
-        current_data = json.loads(r.text)
-        accumulated_results = accumulated_results + current_data['results']
-        next_url = current_data['next']
-        i = i + 1
-      else:
-        print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
-    file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
-    text_file = open(file, "w")
-    text_file.write(json.dumps(accumulated_results))
-    text_file.close()
+    t = Thread(target=download_year_data, args=(year,))
+    threads.append(t)
+    # print (str(year))
+    # next_url = "http://" + config.params['server_url'] + "/api/all_reports_paginated/?format=json&page_size=500" + "&year=" + str(year)
+    # accumulated_results = []
+    # i = 1
+    # while(next_url is not None):
+    #   print("Working on {0}, page {1}".format(str(year),str(i)))
+    #   r = requests.get(next_url, headers=headers)
+    #   if r.status_code == 200:
+    #     current_data = json.loads(r.text)
+    #     accumulated_results = accumulated_results + current_data['results']
+    #     next_url = current_data['next']
+    #     i = i + 1
+    #   else:
+    #     print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+    # file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
+    # text_file = open(file, "w")
+    # text_file.write(json.dumps(accumulated_results))
+    # text_file.close()
 
+for x in threads:
+     x.start()
+
+for x in threads:
+     x.join()
 
 for year in range(2014, this_year + 1):
     print (str(year))
