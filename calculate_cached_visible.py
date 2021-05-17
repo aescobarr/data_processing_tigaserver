@@ -29,4 +29,4 @@ for report in reports:
   report.cached_visible = show_on_map
   report.save()
   i = i + 1
-  print 'Working in report {} of {}'.format(str(i), str(n_all_reports))
+  print ('Working in report {} of {}'.format(str(i), str(n_all_reports)))
