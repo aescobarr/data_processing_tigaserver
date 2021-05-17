@@ -97,7 +97,7 @@ new_reports_unfiltered_sites_other = Report.objects.exclude(type='adult').exclud
 
 new_reports_unfiltered_sites = new_reports_unfiltered_sites_embornal | new_reports_unfiltered_sites_other
 
-new_reports_unfiltered_sites = filter_reports(new_reports_unfiltered_sites, False)
+new_reports_unfiltered_sites = list(filter_reports(new_reports_unfiltered_sites, False))
 
 fast_track = load_fast_track_ids()
 
