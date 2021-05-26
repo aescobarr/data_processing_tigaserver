@@ -1,5 +1,16 @@
-# coding=utf-8
-# !/usr/bin/env python
+import os, sys
+
+proj_path = "/home/webuser/webapps/tigaserver/"
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tigaserver_project.settings")
+sys.path.append(proj_path)
+
+os.chdir(proj_path)
+
+from django.core.wsgi import get_wsgi_application
+
+application = get_wsgi_application()
+
+from rest_framework.renderers import JSONRenderer
 import requests
 from requests.auth import HTTPBasicAuth
 import json
@@ -7,6 +18,8 @@ from datetime import datetime
 import config
 import psycopg2
 from django.utils.dateparse import parse_datetime
+from tigaserver_app.views import all_reports_internal
+from tigaserver_app.views import get_cfa_reports, get_cfs_reports, non_visible_reports_internal, coverage_month_internal
 
 
 def update_municipalities(cursor):
@@ -182,68 +195,81 @@ filenames.append("/tmp/hidden_reports2020.json")
 filenames.append("/tmp/hidden_reports2021.json")
 
 
-r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
-if r.status_code == 200:
-    file = "/tmp/cfa.json"
-    text_file = open(file, "w")
-    text_file.write(r.text)
-    text_file.close()
-    print ('Coarse filter adults complete')
+# r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
+# if r.status_code == 200:
+cfa_data = get_cfa_reports()
+file = "/tmp/cfa.json"
+text_file = open(file, "w")
+text_file.write(json.dumps(cfa_data))
+text_file.close()
+print ('Coarse filter adults complete')
 
-r = requests.get("http://" + config.params['server_url'] + "/api/cfs_reports/?format=json", headers=headers)
-if r.status_code == 200:
-    file = "/tmp/cfs.json"
-    text_file = open(file, "w")
-    text_file.write(r.text)
-    text_file.close()
-    print ('Coarse filter sites complete')
+# r = requests.get("http://" + config.params['server_url'] + "/api/cfs_reports/?format=json", headers=headers)
+# if r.status_code == 200:
+cfs_data = get_cfs_reports()
+file = "/tmp/cfs.json"
+text_file = open(file, "w")
+text_file.write(json.dumps(cfs_data))
+text_file.close()
+print ('Coarse filter sites complete')
 
 
 # experimental paginated endpoint
 for year in range(2014, this_year + 1):
     print (str(year))
-    next_url = "http://" + config.params['server_url'] + "/api/all_reports_paginated/?format=json&page_size=500" + "&year=" + str(year)
-    accumulated_results = []
-    i = 1
-    while(next_url is not None):
-      print("Working on {0}, page {1}".format(str(year),str(i)))
-      r = requests.get(next_url, headers=headers)
-      if r.status_code == 200:
-        current_data = json.loads(r.text)
-        accumulated_results = accumulated_results + current_data['results']
-        next_url = current_data['next']
-        i = i + 1
-      else:
-        print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+    d = all_reports_internal(year)
+    json_string = JSONRenderer().render(d)
+    data = json.loads(json_string)
+    accumulated_results = json.dumps(data)
+
     file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
     text_file = open(file, "w")
-    text_file.write(json.dumps(accumulated_results))
+    text_file.write(accumulated_results)
     text_file.close()
 
 
 for year in range(2014, this_year + 1):
     print (str(year))
-    r = requests.get(
-        "http://" + config.params['server_url'] + "/api/hidden_reports/?format=json" + "&year=" + str(year),
-        headers=headers)
-    if r.status_code == 200:
-        file = "/tmp/hidden_reports" + str(year) + ".json"
-        text_file = open(file, "w")
-        text_file.write(r.text)
-        text_file.close()
-        print (str(year) + ' complete')
-        filenames.append(file)
-    else:
-        print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+    d = non_visible_reports_internal(year)
+    json_string = JSONRenderer().render(d)
+    data = json.loads(json_string)
+    accumulated_results = json.dumps(data)
+
+    file = "/tmp/hidden_reports" + str(year) + ".json"
+    text_file = open(file, "w")
+    text_file.write(accumulated_results)
+    text_file.close()
+    print (str(year) + ' complete')
+
+    # r = requests.get(
+    #     "http://" + config.params['server_url'] + "/api/hidden_reports/?format=json" + "&year=" + str(year),
+    #     headers=headers)
+    # if r.status_code == 200:
+    #     file = "/tmp/hidden_reports" + str(year) + ".json"
+    #     text_file = open(file, "w")
+    #     text_file.write(r.text)
+    #     text_file.close()
+    #     print (str(year) + ' complete')
+    #     filenames.append(file)
+    # else:
+    #     print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
 
 print('Starting coverage month request')
-r = requests.get("http://" + config.params['server_url'] + "/api/coverage_month/?format=json", headers=headers)
-if r.status_code == 200:
-    text_file = open("/home/webuser/webapps/tigaserver/static/coverage_month_data.json", "w")
-    text_file.write(r.text)
-    text_file.close()
-else:
-    print ('Warning: coverage month response status code is ' + str(r.status_code))
+d = coverage_month_internal()
+json_string = JSONRenderer().render(d)
+data = json.loads(json_string)
+accumulated_results = json.dumps(data)
+text_file = open("/home/webuser/webapps/tigaserver/static/coverage_month_data.json", "w")
+text_file.write(accumulated_results)
+text_file.close()
+
+# r = requests.get("http://" + config.params['server_url'] + "/api/coverage_month/?format=json", headers=headers)
+# if r.status_code == 200:
+#     text_file = open("/home/webuser/webapps/tigaserver/static/coverage_month_data.json", "w")
+#     text_file.write(r.text)
+#     text_file.close()
+# else:
+#     print ('Warning: coverage month response status code is ' + str(r.status_code))
 
 
 conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params['db_name'] + "' user='" + \
