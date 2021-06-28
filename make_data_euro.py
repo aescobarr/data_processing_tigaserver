@@ -125,7 +125,7 @@ def get_storm_drain_status(report_responses):
     questions_have_id = False
     for report_response in report_responses:
         question_id = report_response.get('question_id',None)
-        answer_id = report_response.get('question_id', None)
+        answer_id = report_response.get('answer_id', None)
         if question_id is not None and answer_id is not None:
             questions_have_id = True
             if question_id == 12 and answer_id == 121:
