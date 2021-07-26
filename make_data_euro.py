@@ -164,23 +164,23 @@ filenames = []
 # This block should only be uncommented running the script locally and with pregenerated map data files
 # #####################################################################################################
 
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2014.json")
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2015.json")
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2016.json")
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2017.json")
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2018.json")
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2019.json")
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2020.json")
-filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2021.json")
-filenames.append("/tmp/hidden_reports2014.json")
-filenames.append("/tmp/hidden_reports2015.json")
-filenames.append("/tmp/hidden_reports2016.json")
-filenames.append("/tmp/hidden_reports2017.json")
-filenames.append("/tmp/hidden_reports2018.json")
-filenames.append("/tmp/hidden_reports2019.json")
-filenames.append("/tmp/hidden_reports2020.json")
-filenames.append("/tmp/hidden_reports2021.json")
-
+# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2014.json")
+# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2015.json")
+# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2016.json")
+# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2017.json")
+# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2018.json")
+# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2019.json")
+# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2020.json")
+# filenames.append("/home/webuser/webapps/tigaserver/static/all_reports2021.json")
+# filenames.append("/tmp/hidden_reports2014.json")
+# filenames.append("/tmp/hidden_reports2015.json")
+# filenames.append("/tmp/hidden_reports2016.json")
+# filenames.append("/tmp/hidden_reports2017.json")
+# filenames.append("/tmp/hidden_reports2018.json")
+# filenames.append("/tmp/hidden_reports2019.json")
+# filenames.append("/tmp/hidden_reports2020.json")
+# filenames.append("/tmp/hidden_reports2021.json")
+filenames.append("/home/webuser/webapps/tigaserver/static/all_reports" + str(this_year) + ".json")
 
 r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
 if r.status_code == 200:
@@ -200,41 +200,39 @@ if r.status_code == 200:
 
 
 # experimental paginated endpoint
-for year in range(2014, this_year + 1):
-    print (str(year))
-    next_url = "http://" + config.params['server_url'] + "/api/all_reports_paginated/?format=json&page_size=500" + "&year=" + str(year)
-    accumulated_results = []
-    i = 1
-    while(next_url is not None):
-      print("Working on {0}, page {1}".format(str(year),str(i)))
-      r = requests.get(next_url, headers=headers)
-      if r.status_code == 200:
-        current_data = json.loads(r.text)
-        accumulated_results = accumulated_results + current_data['results']
-        next_url = current_data['next']
-        i = i + 1
-      else:
-        print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
-    file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(year) + ".json"
+print (str(this_year))
+next_url = "http://" + config.params['server_url'] + "/api/all_reports_paginated/?format=json&page_size=500" + "&year=" + str(this_year)
+accumulated_results = []
+i = 1
+while(next_url is not None):
+  print("Working on {0}, page {1}".format(str(this_year),str(i)))
+  r = requests.get(next_url, headers=headers)
+  if r.status_code == 200:
+    current_data = json.loads(r.text)
+    accumulated_results = accumulated_results + current_data['results']
+    next_url = current_data['next']
+    i = i + 1
+  else:
+    print ('Warning: report response status code for ' + str(this_year) + ' is ' + str(r.status_code))
+file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(this_year) + ".json"
+text_file = open(file, "w")
+text_file.write(json.dumps(accumulated_results))
+text_file.close()
+
+
+print (str(this_year))
+r = requests.get(
+    "http://" + config.params['server_url'] + "/api/hidden_reports/?format=json" + "&year=" + str(this_year),
+    headers=headers)
+if r.status_code == 200:
+    file = "/tmp/hidden_reports" + str(this_year) + ".json"
     text_file = open(file, "w")
-    text_file.write(json.dumps(accumulated_results))
+    text_file.write(r.text)
     text_file.close()
-
-
-for year in range(2014, this_year + 1):
-    print (str(year))
-    r = requests.get(
-        "http://" + config.params['server_url'] + "/api/hidden_reports/?format=json" + "&year=" + str(year),
-        headers=headers)
-    if r.status_code == 200:
-        file = "/tmp/hidden_reports" + str(year) + ".json"
-        text_file = open(file, "w")
-        text_file.write(r.text)
-        text_file.close()
-        print (str(year) + ' complete')
-        filenames.append(file)
-    else:
-        print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
+    print (str(this_year) + ' complete')
+    filenames.append(file)
+else:
+    print ('Warning: report response status code for ' + str(this_year) + ' is ' + str(r.status_code))
 
 print('Starting coverage month request')
 r = requests.get("http://" + config.params['server_url'] + "/api/coverage_month/?format=json", headers=headers)
@@ -252,24 +250,25 @@ conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params
 print ("Connecting to database")
 conn = psycopg2.connect(conn_string)
 cursor = conn.cursor()
-cursor.execute("DROP TABLE IF EXISTS map_aux_reports CASCADE;")
-cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid character varying(36) UNIQUE, " \
-               "observation_date timestamp with time zone,lon double precision,lat double precision,ref_system character varying(36)," \
-               "type character varying(7),breeding_site_answers character varying(100),mosquito_answers character varying(100)," \
-               "expert_validated boolean,expert_validation_result character varying(100),simplified_expert_validation_result character varying(100)," \
-               "site_cat integer, storm_drain_status character varying(50),edited_user_notes character varying(4000), " \
-               "photo_url character varying(255),photo_license character varying(100),dataset_license character varying(100), " \
-               "single_report_map_url character varying(255), n_photos integer, visible boolean, final_expert_status integer, note text, " \
-               "private_webmap_layer character varying(255), " \
-               "t_q_1 character varying(255), t_q_2 character varying(255), t_q_3 character varying(255), " \
-               "t_a_1 character varying(255), t_a_2 character varying(255), t_a_3 character varying(255), " \
-               "s_q_1 character varying(255), s_q_2 character varying(255), s_q_3 character varying(255), s_q_4 character varying(255)," \
-               "s_a_1 character varying(255), s_a_2 character varying(255), s_a_3 character varying(255), s_a_4 character varying(255)," \
-               "user_id character varying(36)," \
-               "municipality character varying(100)," \
-               "responses_json character varying(4000)," \
-               "tags character varying(4000)" \
-               ");")
+# cursor.execute("DROP TABLE IF EXISTS map_aux_reports CASCADE;")
+# cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid character varying(36) UNIQUE, " \
+#                "observation_date timestamp with time zone,lon double precision,lat double precision,ref_system character varying(36)," \
+#                "type character varying(7),breeding_site_answers character varying(100),mosquito_answers character varying(100)," \
+#                "expert_validated boolean,expert_validation_result character varying(100),simplified_expert_validation_result character varying(100)," \
+#                "site_cat integer, storm_drain_status character varying(50),edited_user_notes character varying(4000), " \
+#                "photo_url character varying(255),photo_license character varying(100),dataset_license character varying(100), " \
+#                "single_report_map_url character varying(255), n_photos integer, visible boolean, final_expert_status integer, note text, " \
+#                "private_webmap_layer character varying(255), " \
+#                "t_q_1 character varying(255), t_q_2 character varying(255), t_q_3 character varying(255), " \
+#                "t_a_1 character varying(255), t_a_2 character varying(255), t_a_3 character varying(255), " \
+#                "s_q_1 character varying(255), s_q_2 character varying(255), s_q_3 character varying(255), s_q_4 character varying(255)," \
+#                "s_a_1 character varying(255), s_a_2 character varying(255), s_a_3 character varying(255), s_a_4 character varying(255)," \
+#                "user_id character varying(36)," \
+#                "municipality character varying(100)," \
+#                "responses_json character varying(4000)," \
+#                "tags character varying(4000)" \
+#                ");")
+cursor.execute("""DELETE FROM map_aux_reports where extract(year from observation_date)=%s;""", (this_year,))
 conn.commit()
 
 # breeding site report - questions and answers
@@ -610,7 +609,7 @@ add_photo_to_not_yet_filtered_adults(cursor)
 move_hidden_adult_report_to_trash_layer(cursor)
 
 #Added field municipality_id to table, petition by SIGTE
-cursor.execute("""ALTER TABLE map_aux_reports add column municipality_id integer;""")
+#cursor.execute("""ALTER TABLE map_aux_reports add column municipality_id integer;""")
 cursor.execute("""UPDATE map_aux_reports set municipality_id = foo.gid from ( SELECT r.version_uuid, muni.nombre, muni.gid FROM municipis_4326 muni,map_aux_reports r WHERE st_within(st_setsrid(st_point(r.lon,r.lat),4326),muni.geom)) as foo where foo.version_uuid = map_aux_reports.version_uuid;""")
 
 print ("Adjusting coarse filter adults")
@@ -629,6 +628,10 @@ update_tags(cursor)
 
 # regenerate map view (drop table destroys it)
 print ("Regenerating views")
+
+cursor.execute("""
+DROP MATERIALIZED VIEW IF EXISTS reports_map_data;
+""")
 
 cursor.execute("""
 CREATE MATERIALIZED VIEW public.reports_map_data AS 
