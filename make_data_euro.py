@@ -219,20 +219,36 @@ text_file = open(file, "w")
 text_file.write(json.dumps(accumulated_results))
 text_file.close()
 
-
 print (str(this_year))
-r = requests.get(
-    "http://" + config.params['server_url'] + "/api/hidden_reports/?format=json" + "&year=" + str(this_year),
-    headers=headers)
-if r.status_code == 200:
-    file = "/tmp/hidden_reports" + str(this_year) + ".json"
-    text_file = open(file, "w")
-    text_file.write(r.text)
-    text_file.close()
-    print (str(this_year) + ' complete')
-    filenames.append(file)
-else:
+next_url = "http://" + config.params['server_url'] + "/api/hidden_reports_paginated/?format=json&page_size=500" + "&year=" + str(this_year)
+accumulated_results = []
+i = 1
+while(next_url is not None):
+  print("Working on hidden {0}, page {1}".format(str(this_year),str(i)))
+  r = requests.get(next_url, headers=headers)
+  if r.status_code == 200:
+    current_data = json.loads(r.text)
+    accumulated_results = accumulated_results + current_data['results']
+    next_url = current_data['next']
+    i = i + 1
+  else:
     print ('Warning: report response status code for ' + str(this_year) + ' is ' + str(r.status_code))
+file = "/tmp/hidden_reports" + str(this_year) + ".json"
+text_file = open(file, "w")
+text_file.write(json.dumps(accumulated_results))
+text_file.close()
+filenames.append(file)
+# print (str(this_year))
+# r = requests.get("http://" + config.params['server_url'] + "/api/hidden_reports/?format=json" + "&year=" + str(this_year), headers=headers)
+# if r.status_code == 200:
+#     file = "/tmp/hidden_reports" + str(this_year) + ".json"
+#     text_file = open(file, "w")
+#     text_file.write(r.text)
+#     text_file.close()
+#     print (str(this_year) + ' complete')
+#     filenames.append(file)
+# else:
+#     print ('Warning: report response status code for ' + str(this_year) + ' is ' + str(r.status_code))
 
 print('Starting coverage month request')
 r = requests.get("http://" + config.params['server_url'] + "/api/coverage_month/?format=json", headers=headers)
