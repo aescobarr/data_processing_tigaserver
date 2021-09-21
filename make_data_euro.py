@@ -1,5 +1,7 @@
 # coding=utf-8
 # !/usr/bin/env python
+import sys
+
 import requests
 from requests.auth import HTTPBasicAuth
 import json
@@ -181,6 +183,7 @@ filenames = []
 # filenames.append("/tmp/hidden_reports2020.json")
 # filenames.append("/tmp/hidden_reports2021.json")
 filenames.append("/home/webuser/webapps/tigaserver/static/all_reports" + str(this_year) + ".json")
+filenames.append("/tmp/hidden_reports2021.json")
 
 r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
 if r.status_code == 200:
@@ -199,31 +202,43 @@ if r.status_code == 200:
     print ('Coarse filter sites complete')
 
 
+RETRY_LIMIT = 3
+
 # experimental paginated endpoint
 print (str(this_year))
 next_url = "http://" + config.params['server_url'] + "/api/all_reports_paginated/?format=json&page_size=500" + "&year=" + str(this_year)
+n_retries = 0
 accumulated_results = []
 i = 1
-while(next_url is not None):
+while(next_url is not None and n_retries < RETRY_LIMIT):
   print("Working on {0}, page {1}".format(str(this_year),str(i)))
   r = requests.get(next_url, headers=headers)
   if r.status_code == 200:
     current_data = json.loads(r.text)
     accumulated_results = accumulated_results + current_data['results']
+    previous_url = next_url
     next_url = current_data['next']
     i = i + 1
+    n_retries = 0
   else:
+    n_retries += 1
     print ('Warning: report response status code for ' + str(this_year) + ' is ' + str(r.status_code))
-file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(this_year) + ".json"
-text_file = open(file, "w")
-text_file.write(json.dumps(accumulated_results))
-text_file.close()
+
+if n_retries >= RETRY_LIMIT:
+    print("Failed generating file /home/webuser/webapps/tigaserver/static/all_reports" + str(this_year) + ".json, aborting")
+    sys.exit(1)
+else:
+    file = "/home/webuser/webapps/tigaserver/static/all_reports" + str(this_year) + ".json"
+    text_file = open(file, "w")
+    text_file.write(json.dumps(accumulated_results))
+    text_file.close()
 
 print (str(this_year))
 next_url = "http://" + config.params['server_url'] + "/api/hidden_reports_paginated/?format=json&page_size=500" + "&year=" + str(this_year)
+n_retries = 0
 accumulated_results = []
 i = 1
-while(next_url is not None):
+while(next_url is not None and n_retries < RETRY_LIMIT):
   print("Working on hidden {0}, page {1}".format(str(this_year),str(i)))
   r = requests.get(next_url, headers=headers)
   if r.status_code == 200:
@@ -231,13 +246,20 @@ while(next_url is not None):
     accumulated_results = accumulated_results + current_data['results']
     next_url = current_data['next']
     i = i + 1
+    n_retries = 0
   else:
+    n_retries += 1
     print ('Warning: report response status code for ' + str(this_year) + ' is ' + str(r.status_code))
-file = "/tmp/hidden_reports" + str(this_year) + ".json"
-text_file = open(file, "w")
-text_file.write(json.dumps(accumulated_results))
-text_file.close()
-filenames.append(file)
+
+if n_retries >= RETRY_LIMIT:
+    print("Failed generating file /tmp/hidden_reports" + str(this_year) + ".json, aborting")
+    sys.exit(1)
+else:
+    file = "/tmp/hidden_reports" + str(this_year) + ".json"
+    text_file = open(file, "w")
+    text_file.write(json.dumps(accumulated_results))
+    text_file.close()
+
 # print (str(this_year))
 # r = requests.get("http://" + config.params['server_url'] + "/api/hidden_reports/?format=json" + "&year=" + str(this_year), headers=headers)
 # if r.status_code == 200:
