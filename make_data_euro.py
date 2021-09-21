@@ -381,14 +381,20 @@ for file in filenames:
         if bit['tiger_responses_text'] is not None:
             index_t = 0
             for key in bit['tiger_responses_text'].keys():
-                tiger_questions[index_t] = key
-                tiger_answers[index_t] = bit['tiger_responses_text'][key]
+                try:
+                    tiger_questions[index_t] = key
+                    tiger_answers[index_t] = bit['tiger_responses_text'][key]
+                except IndexError:
+                    print("*** WARNING ***" + bit['version_UUID'])
                 index_t = index_t + 1
         if bit['site_responses_text'] is not None:
             index_s = 0
             for key in bit['site_responses_text'].keys():
-                site_questions[index_s] = key
-                site_answers[index_s] = bit['site_responses_text'][key]
+                try:
+                    site_questions[index_s] = key
+                    site_answers[index_s] = bit['site_responses_text'][key]
+                except IndexError:
+                    print("*** WARNING ***" + bit['version_UUID'])
                 index_s = index_s + 1
 
         responses_json = bit['responses']
