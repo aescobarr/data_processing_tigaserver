@@ -198,9 +198,8 @@ filenames.append("/tmp/hidden_reports2020.json")
 filenames.append("/tmp/hidden_reports2021.json")
 filenames.append("/tmp/hidden_reports2022.json")
 
+# FILE WRITING
 
-# r = requests.get("http://" + config.params['server_url'] + "/api/cfa_reports/?format=json", headers=headers)
-# if r.status_code == 200:
 cfa_data = get_cfa_reports()
 file = "/tmp/cfa.json"
 text_file = open(file, "w")
@@ -208,8 +207,6 @@ text_file.write(json.dumps(cfa_data))
 text_file.close()
 print ('Coarse filter adults complete')
 
-# r = requests.get("http://" + config.params['server_url'] + "/api/cfs_reports/?format=json", headers=headers)
-# if r.status_code == 200:
 cfs_data = get_cfs_reports()
 file = "/tmp/cfs.json"
 text_file = open(file, "w")
@@ -245,19 +242,6 @@ for year in range(2014, this_year + 1):
     text_file.close()
     print (str(year) + ' complete')
 
-    # r = requests.get(
-    #     "http://" + config.params['server_url'] + "/api/hidden_reports/?format=json" + "&year=" + str(year),
-    #     headers=headers)
-    # if r.status_code == 200:
-    #     file = "/tmp/hidden_reports" + str(year) + ".json"
-    #     text_file = open(file, "w")
-    #     text_file.write(r.text)
-    #     text_file.close()
-    #     print (str(year) + ' complete')
-    #     filenames.append(file)
-    # else:
-    #     print ('Warning: report response status code for ' + str(year) + ' is ' + str(r.status_code))
-
 print('Starting coverage month request')
 d = coverage_month_internal()
 json_string = JSONRenderer().render(d)
@@ -267,14 +251,7 @@ text_file = open("/home/webuser/webapps/tigaserver/static/coverage_month_data.js
 text_file.write(accumulated_results)
 text_file.close()
 
-# r = requests.get("http://" + config.params['server_url'] + "/api/coverage_month/?format=json", headers=headers)
-# if r.status_code == 200:
-#     text_file = open("/home/webuser/webapps/tigaserver/static/coverage_month_data.json", "w")
-#     text_file.write(r.text)
-#     text_file.close()
-# else:
-#     print ('Warning: coverage month response status code is ' + str(r.status_code))
-
+# END FILE WRITING
 
 conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params['db_name'] + "' user='" + \
               config.params['db_user'] + "' password='" + config.params['db_password'] + "' port='" + \
@@ -581,10 +558,14 @@ cursor.execute(
     """UPDATE map_aux_reports set private_webmap_layer='culex_probable' where type='adult' and expert_validated=True and expert_validation_result='culex#1' and n_photos > 0 and final_expert_status=1;""")
 
 cursor.execute(
-    """UPDATE map_aux_reports set private_webmap_layer='japonicus_koreicus' where type='adult' and expert_validated=True and expert_validation_result='japonicus-koreicus#0' and n_photos > 0 and final_expert_status=1;""")
+    #"""UPDATE map_aux_reports set private_webmap_layer='japonicus_koreicus' where type='adult' and expert_validated=True and expert_validation_result='japonicus-koreicus#0' and n_photos > 0 and final_expert_status=1;"""
+    """UPDATE map_aux_reports set private_webmap_layer='japonicus_koreicus' where type='adult' and expert_validated=True and expert_validation_result='complex#1' and n_photos > 0 and final_expert_status=1;"""
+)
 
 cursor.execute(
-    """UPDATE map_aux_reports set private_webmap_layer='albopictus_cretinus' where type='adult' and expert_validated=True and expert_validation_result='albopictus-cretinus#0' and n_photos > 0 and final_expert_status=1;""")
+    #"""UPDATE map_aux_reports set private_webmap_layer='albopictus_cretinus' where type='adult' and expert_validated=True and expert_validation_result='albopictus-cretinus#0' and n_photos > 0 and final_expert_status=1;"""
+    """UPDATE map_aux_reports set private_webmap_layer='albopictus_cretinus' where type='adult' and expert_validated=True and expert_validation_result='complex#2' and n_photos > 0 and final_expert_status=1;"""
+)
 
 cursor.execute(
     """UPDATE map_aux_reports set private_webmap_layer='other_species' where type='adult' and expert_validated=True and (expert_validation_result='other_species#0') and n_photos > 0 and final_expert_status=1;""")
