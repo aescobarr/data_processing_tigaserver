@@ -253,11 +253,12 @@ text_file.close()
 
 # END FILE WRITING
 
-conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params['db_name'] + "' user='" + \
-              config.params['db_user'] + "' password='" + config.params['db_password'] + "' port='" + \
-              config.params['db_port'] + "'"
+#conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params['db_name'] + "' user='" + \
+#              config.params['db_user'] + "' password='" + config.params['db_password'] + "' port='" + \
+#              config.params['db_port'] + "'"
 print ("Connecting to database")
-conn = psycopg2.connect(conn_string)
+#conn = psycopg2.connect(conn_string)
+conn = psycopg2.connect(dbname=config.params['db_name'], user=config.params['db_user'], password=config.params['db_password'], port=config.params['db_port'], host=config.params['db_host'])
 cursor = conn.cursor()
 cursor.execute("DROP TABLE IF EXISTS map_aux_reports CASCADE;")
 cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid character varying(36) UNIQUE, " \
