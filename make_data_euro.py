@@ -55,6 +55,13 @@ def update_user_uuids(cursor):
         """UPDATE map_aux_reports m set user_id=(SELECT user_id from tigaserver_app_report r where m.version_uuid=r."version_UUID");""")
 
 
+def update_report_ids(cursor):
+    cursor.execute(
+        """
+        update map_aux_reports m set report_id=(select report_id from tigaserver_app_report r where m.version_uuid=r."version_UUID");
+        """
+    )
+
 def move_hidden_adult_report_to_trash_layer(cursor):
     cursor.execute("""select "version_UUID" from tigaserver_app_report where hide=True and type='adult';""")
     result = cursor.fetchall()
@@ -140,12 +147,12 @@ def get_storm_drain_status(report_responses):
     questions_have_id = False
     for report_response in report_responses:
         question_id = report_response.get('question_id',None)
-        answer_id = report_response.get('question_id', None)
+        answer_id = report_response.get('answer_id', None)
         if question_id is not None and answer_id is not None:
             questions_have_id = True
             if question_id == 12 and answer_id == 121:
-                    is_storm_drain = True
-            elif question_id == 8 and answer_id == 101:
+                is_storm_drain = True
+            if question_id == 10 and answer_id == 101:
                 water = True
         else:
             question = report_response['question']
@@ -197,6 +204,7 @@ filenames.append("/tmp/hidden_reports2019.json")
 filenames.append("/tmp/hidden_reports2020.json")
 filenames.append("/tmp/hidden_reports2021.json")
 filenames.append("/tmp/hidden_reports2022.json")
+
 
 # FILE WRITING
 
@@ -276,7 +284,8 @@ cursor.execute("CREATE TABLE map_aux_reports (id serial primary key,version_uuid
                "user_id character varying(36)," \
                "municipality character varying(100)," \
                "responses_json character varying(4000)," \
-               "tags character varying(4000)" \
+               "tags character varying(4000)," \
+               "report_id character varying(4)" \
                ");")
 conn.commit()
 
@@ -357,6 +366,7 @@ for file in filenames:
         site_answers = [s_a_1, s_a_2, s_a_3, s_a_4]
         # new_storm_drain_status = ''
         photo_html_str = ''
+        report_id = ''
 
         if bit['tiger_responses_text'] is not None:
             index_t = 0
@@ -638,6 +648,9 @@ update_municipalities(cursor)
 
 print ("Updating tags")
 update_tags(cursor)
+
+print ("Updating report_ids")
+update_report_ids(cursor)
 
 # regenerate map view (drop table destroys it)
 print ("Regenerating views")
