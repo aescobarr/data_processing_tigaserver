@@ -261,6 +261,7 @@ text_file.close()
 
 # END FILE WRITING
 
+
 #conn_string = "host='" + config.params['db_host'] + "' dbname='" + config.params['db_name'] + "' user='" + \
 #              config.params['db_user'] + "' password='" + config.params['db_password'] + "' port='" + \
 #              config.params['db_port'] + "'"
@@ -336,6 +337,7 @@ class_translation_table = {
     'not-sure': 'not_sure',
     'unclassified': 'unclassified',
     'culex-sp': 'culex',
+    'culex-pipiens': 'culex',
     'conflict': 'conflict',
     'complex': 'complex'
 }
